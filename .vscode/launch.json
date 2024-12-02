@@ -4,18 +4,18 @@
             "type": "lldb",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:mnist}",
+            "cwd": "${workspaceFolder:mnist_swift}",
             "name": "Debug mnist",
-            "program": "${workspaceFolder:mnist}/.build/debug/mnist",
+            "program": "${workspaceFolder:mnist_swift}/.build/debug/mnist",
             "preLaunchTask": "swift: Build Debug mnist"
         },
         {
             "type": "lldb",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:mnist}",
+            "cwd": "${workspaceFolder:mnist_swift}",
             "name": "Release mnist",
-            "program": "${workspaceFolder:mnist}/.build/release/mnist",
+            "program": "${workspaceFolder:mnist_swift}/.build/release/mnist",
             "preLaunchTask": "swift: Build Release mnist"
         }
     ]
