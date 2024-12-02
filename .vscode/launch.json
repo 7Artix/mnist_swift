@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:mnist}",
+            "name": "Debug mnist",
+            "program": "${workspaceFolder:mnist}/.build/debug/mnist",
+            "preLaunchTask": "swift: Build Debug mnist"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:mnist}",
+            "name": "Release mnist",
+            "program": "${workspaceFolder:mnist}/.build/release/mnist",
+            "preLaunchTask": "swift: Build Release mnist"
+        }
+    ]
+}
