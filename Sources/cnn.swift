@@ -18,7 +18,8 @@ class CNN: NN {
         }
         return normalized
     }
-
+    
+    //MARK: 卷积函数
     private func convolution<T: BinaryInteger & FixedWidthInteger>(_ image: [[T]], with filter: [[Int]]) -> [[T]]{
         let filterHeight = filter.count
         let filterWidth = filter.first?.count ?? 0
@@ -103,24 +104,40 @@ class CNN: NN {
         case l2
     }
 
-    private func pooling<T: BinaryInteger & FixedWidthInteger>(_ image: [[T]], with method:PollingMethod, windowHeight: Int, windowWidth: Int) {
-        let inputHeight = image.count
-        let inputWidth = image.first?.count ?? 0
-        let outputHeight = inputHeight / windowHeight
-        let outputWidth = inputWidth / windowWidth
-        var currentImage = image
-        var outputImage = Array(repeating: Array(repeating: T(0), count: outputWidth), count: outputHeight)
-        var rowsPartWindowHeight: [[T]]
-        var poolingValue = T(0)
-        for rowIndex in 0..<outputHeight {
-            for partRowIndex in 0..<windowHeight {
-                rowsPartWindowHeight.append(currentImage.safeRemoveFirst())
+    //MARK: 池化函数:修剪与池化窗口倍数不匹配的像素
+    private func pooling<T: BinaryInteger & FixedWidthInteger>(_ image: [[T]], with method: PollingMethod, windowHeight heightWindow: Int, windowWidth widthWindow: Int) -> [[T]] {
+        let heightInput = image.count
+        let widthInput = image.first?.count ?? 0
+        let heightOutput = heightInput / heightWindow
+        let widthOutput = widthInput / widthWindow
+        var imageOutput = Array(repeating: Array(repeating: T(0), count: widthOutput), count: heightOutput)
+        for indexRowOutput in 0..<heightOutput {
+            for indexColOutput in 0..<widthOutput {
+                var poolingValuesTemp: [T] = []
+                for indexRowWindow in 0..<heightWindow {
+                    for indexColWindow in 0..<widthWindow {
+                        poolingValuesTemp.append(image[indexRowOutput*heightWindow+indexRowWindow][indexColOutput*widthWindow+indexColWindow])
+                    }
+                }
+                imageOutput[indexRowOutput][indexColOutput] = poolingAction(poolingValuesTemp, with: method)
             }
         }
+        return imageOutput
+    }
+    private func poolingAction<T: BinaryInteger & FixedWidthInteger>(_ values: [T], with method: PollingMethod) -> T {
+        var result: T
         switch method {
             case .average:
+                var valueSum: Int64 = 0
+                valueSum = Int64(values.reduce(0) {$0 + $1})
+                result = T(valueSum / Int64(values.count))
             case .l2:
+                var squareSum: UInt64 = 0
+                squareSum = UInt64(values.reduce(0) {$0 + $1 * $1})
+                result = T(sqrt(Double(squareSum)))
             case .max:
+                result = values.max() ?? T(0)
         }
+        return result
     }
 }
