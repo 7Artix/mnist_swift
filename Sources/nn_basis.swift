@@ -10,8 +10,28 @@ func sigmoid(_ x: Double) -> Double {
 }
 
 //MARK: 损失函数
+// 交叉熵损失函数
+func crossEntropyLoss(predictions: [Double], labels: [Double]) -> Double {
+    // 确保 predictions 和 labels 长度一致
+    guard predictions.count == labels.count else {
+        fatalError("Predictions and labels must have the same length.")
+    }
+    var loss: Double = 0.0
+    for (index, label) in labels.enumerated() {
+        loss -= label * log(predictions[index] + 1e-15) // 防止log(0)的情况
+    }
+    return loss / Double(labels.count)
+}
 
-//MARK: 归一化
+//MARK: 归一化函数
+//softmax
+func softmax(_ input: [Double]) -> [Double] {
+    let maxInput = input.max() ?? 0.0
+    //减去最大值, 防止由于指数过大导致溢出, 或指数过小导致精度问题
+    let expValues = input.map { exp($0 - maxInput) }
+    let sumExp = expValues.reduce(0, +)
+    return expValues.map { $0 / sumExp }
+}
 
 //MARK: 生成函数
 //正态分布生成

@@ -20,6 +20,8 @@ struct LayerConfig {
 struct NNConfig {
     var layerConfigs: [LayerConfig]
     let inputSize: Int
+    var outputFunction: ([Double]) -> [Double] = softmax(_:)
+    var costFunction: ([Double],[Double]) -> Double = crossEntropyLoss(predictions:labels:)
 
     init(inputSize: Int, initBias: Double, layerStructure: [Int], weightInitializer: @escaping (Int, Int?) -> Double, biasInitializer: @escaping (Double) -> Double) {
         self.inputSize = inputSize
@@ -95,6 +97,10 @@ class NN {
     init(config: NNConfig){
         self.layers = config.layerConfigs.map { Layer(config: $0) }
         self.layerCount = self.layers.count
+    }
+
+    func fp() {
+        
     }
 
     //保存最佳参数
