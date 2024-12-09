@@ -1,15 +1,35 @@
 import Foundation
 
 //MARK: 激活函数
-func relu(_ x: Double) -> Double {
-    return max(0, x)
+protocol ActivationFunction {
+    func forward(_ x: Double) -> Double
+    func backward(_ x: Double) -> Double
 }
 
-func sigmoid(_ x: Double) -> Double {
-    return 1 / (1 + exp(-x))
+class ReLU: ActivationFunction {
+    func forward(_ x: Double) -> Double {
+        return max(0, x)
+    }
+    func backward(_ x: Double) -> Double {
+        return x > 0 ? 1.0 : 0.0
+    }
+}
+
+class Sigmoid: ActivationFunction {
+    func forward(_ x: Double) -> Double {
+        return 1 / (1 + exp(-x))
+    }
+    func backward(_ x: Double) -> Double {
+        let y = forward(x)
+        return y * (1 - y)
+    }
 }
 
 //MARK: 损失函数
+protocol LossFunction {
+    func forward(predictions: [Double], labels: [Double]) -> Double
+    func backward(predictions: [Double], labels: [Double]) -> [Double]
+}
 // 交叉熵损失函数
 func crossEntropyLoss(predictions: [Double], labels: [Double]) -> Double {
     // 确保 predictions 和 labels 长度一致
