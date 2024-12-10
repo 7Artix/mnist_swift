@@ -21,7 +21,9 @@ struct NNConfig {
     var layerConfigs: [LayerConfig]
     let inputSize: Int
     var outputFunction: ([Double]) -> [Double] = softmax(_:)
-    var costFunction: ([Double],[Double]) -> Double = crossEntropyLoss(predictions:labels:)
+    var lossFunctionType: LossFunction.Type = CrossEntropy.self
+    lazy var lossFunction: LossFunction = lossFunctionType.init()
+    
 
     init(inputSize: Int, initBias: Double, layerStructure: [Int], weightInitializer: @escaping (Int, Int?) -> Double, biasInitializer: @escaping (Double) -> Double) {
         self.inputSize = inputSize
