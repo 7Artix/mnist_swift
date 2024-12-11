@@ -25,6 +25,22 @@ class Sigmoid: ActivationFunction {
     }
 }
 
+//MARK: 权重初始化函数
+//Glorot初始化 for weight
+func glorotInitializer(inputSize: Int?, outputSize: Int?) -> Double {
+    let limit = sqrt(6.0 / Double((inputSize ?? 1) + (outputSize ?? 1)))
+    return Double.random(in: -limit...limit)
+}
+//HE初始化 for weight
+func heInitializer(inputSize: Int?, _: Int?) -> Double {
+    let stdDev = sqrt(2.0 / Double((inputSize ?? 1)))
+    return generateNormal(mean: 0.0, stdDev: stdDev)
+}
+//常值初始化 for weight
+func constantInitializer(_: Int?, _: Int?) -> Double {
+    return 0.5
+}
+
 //MARK: 损失函数
 protocol LossFunction {
     init()
@@ -55,13 +71,23 @@ class CrossEntropy: LossFunction {
 }
 
 //MARK: 归一化函数
+protocol NormalizationFunction {
+    func forward(inputAll: [Double], where: Int) -> Double
+    func backward(inputAll: [Double], where: Int) -> Double
+}
 //softmax
-func softmax(_ input: [Double]) -> [Double] {
-    let maxInput = input.max() ?? 0.0
-    //减去最大值, 防止由于指数过大导致溢出, 或指数过小导致精度问题
-    let expValues = input.map { exp($0 - maxInput) }
-    let sumExp = expValues.reduce(0, +)
-    return expValues.map { $0 / sumExp }
+
+class Softmax: NormalizationFunction {
+    func forward(inputAll: [Double], where index: Int) -> Double {
+        let maxInput = inputAll.max() ?? 0.0
+        //减去最大值, 防止由于指数过大导致溢出, 或指数过小导致精度问题
+        let expValues = inputAll.map { exp($0 - maxInput) }
+        let sumExp = expValues.reduce(0, +)
+        return expValues[index] / sumExp
+    }
+    func backward() {
+    code
+    }
 }
 
 //MARK: 生成函数
