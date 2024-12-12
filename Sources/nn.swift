@@ -1,75 +1,70 @@
 import Foundation
 
+struct NodeStructure {
+    var activationFunction: ActivationFunction
+    var weightInitializer: (Int?, Int?) -> Double
+    var bias: Double
+}
+
+struct OutputLayer {
+    var outputSize: Int
+    var valueNetwork: [Double]
+    var valueNormalized: [Double]
+    var dLoss: [Double]?
+    var dNormalization: [Double]?
+    var normalizationFunction: NormalizationFunction
+    var lossFunction: LossFunction
+    init(outputSize: Int, normalizationFunction: NormalizationFunction, lossFunction: LossFunction) {
+        self.outputSize = outputSize
+        self.valueNetwork = Array(repeating: Double(0.0), count: outputSize)
+        self.valueNormalized = Array(repeating: Double(0.0), count: outputSize)
+        self.normalizationFunction = normalizationFunction
+        self.lossFunction = lossFunction
+    }
+}
+
 struct NNConfig {
     let inputSize: Int
-    var outputFunction: ([Double]) -> [Double] = softmax(_:)
-    var lossFunctionType: LossFunction.Type = CrossEntropy.self
-    lazy var lossFunction: LossFunction = lossFunctionType.init()
-    
-    struct NodeStructure {
-        var activationFunction: ActivationFunction
-        var weightInitializer: (Int?, Int?) -> Double
-        var bias: Double
-    }
-    struct NormNodeStructure {
-        var valueMe: Double
-        var valueAll: [Double]
-        var 
-    }
-
-    init(inputSize: Int, structure: [[NodeStructure]], 
-    weightInitializer: @escaping (Int, Int?) -> Double, biasInitializer: @escaping (Double) -> Double) {
-        self.inputSize = inputSize
-        var previousNodeCount = inputSize
-        self.layerConfigs = layerStructure.enumerated().map { (index, nodeCount) in
-            let nextNodeCount = index + 1 < layerStructure.count ? layerStructure[index + 1] : nil
-            let layerConfig = LayerConfig(nodeCount: nodeCount, inputSize: previousNodeCount, outputSize: nextNodeCount, initBiasValue: initBias, weightInitializer: weightInitializer, biasInitializer: biasInitializer)
-            previousNodeCount = nodeCount
-            return layerConfig
+    var structure: [[NodeStructure]]
+    var outputLayer: OutputLayer
+    init(inputSize: Int, structure: [[NodeStructure]], outputLayer: OutputLayer) {
+        guard let outputSizeFromStructure = structure.last?.count else {
+            fatalError("Error with input node structure")
         }
-    }
-}
-
-class Node {
-    var activation: Double = 0.0
-    var bias: Double
-    var inputSize: Int
-    var outputSize: Int?
-
-    init(config: NodeConfig) {
-        self.inputSize = config.inputSize
-        self.outputSize = config.outputSize
-        self.bias = config.biasInitializer(config.initBias);
-    }
-}
-
-class Layer {
-    var nodes: [Node]
-    var nodeCount: Int
-    var inputSize: Int
-    var outputSize: Int?
-
-    init(config: LayerConfig) {
-        self.nodeCount = config.nodeCount
-        self.inputSize = config.inputSize
-        self.outputSize = config.outputSize
-        let nodeConfig = NodeConfig(inputSize: config.inputSize, outputSize: config.outputSize, initBias: config.initBiasValue, weightInitializer: config.weightInitializer, biasInitializer: config.biasInitializer)
-        self.nodes = (0..<nodeCount).map {_ in Node(config: nodeConfig)}
+        if (outputLayer.outputSize != outputSizeFromStructure) {
+            fatalError("Output layer doesn't match the network")
+        }
+        self.inputSize = inputSize
+        self.structure = structure
+        self.outputLayer = outputLayer
     }
 }
 
 class NN {
-    struct BestParameter {
-        var nodeWeights: [[[Double]]] // 按层存储每个节点的权重
-        var nodeBiases: [[Double]]    // 按层存储每个节点的偏置
+    struct NNParameter {
+        var weights: [[[Double]]] // 按层存储每个节点的权重
+        var biases: [[Double]]    // 按层存储每个节点的偏置
     }
     var weights: [[[Double]]]
     var activations: [[Double]]
-    var historyBest: BestParameter?
+    var biases: [[Double]]
+    var outputLayer: OutputLayer
+    var outputSize: Int
+    var layerStructure: [Int]
+    var dWeights: [[[Double]]]
+    var dBiases: [[Double]]
+    var historyBest: NNParameter?
 
     init(config: NNConfig){
-        self.layers = config.layerConfigs.map { Layer(config: $0) }
-        self.layerCount = self.layers.count
+        self.outputLayer = config.outputLayer
+        self.outputSize = self.outputLayer.outputSize
+        layerStructure = config.structure.map {$0.count}
+        layerStructure.insert(config.inputSize, at: 0)
+        for (indexLayer, layer) in config.structure.enumerated() {
+            for (indexNode, node) in layer.enumerated() {
+                activations[indexLayer][indexNode] = 0.0
+            }
+        }
     }
 
     func fp(dataInOneDim: [Double], labels: [Double]) {
@@ -78,20 +73,9 @@ class NN {
 
     //保存最佳参数
     private func saveBest() {
-        let biases = layers.map { layer in
-            layer.nodes.map { node in node.bias }
-        }
-        self.historyBest = BestParameter(nodeWeights: weights, nodeBiases: biases)
     }
 
     //恢复最佳参数
     private func loadBest() {
-        guard let historyBest = historyBest else { print("Without best record to load"); return}
-        weights = historyBest.nodeWeights
-        for (layerIndex, layer) in layers.enumerated() {
-            for (nodeIndex, node) in layer.nodes.enumerated() {
-                node.bias = historyBest.nodeBiases[layerIndex][nodeIndex]
-            }
-        }
     }
 }

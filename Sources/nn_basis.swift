@@ -85,8 +85,16 @@ class Softmax: NormalizationFunction {
         let sumExp = expValues.reduce(0, +)
         return expValues[index] / sumExp
     }
-    func backward() {
-    code
+    func backward(inputGradients: [Double], where index: Int) -> Double {
+        // 假设 inputAll 是 Softmax 输入，outputGradients 是损失函数对 Softmax 输出的梯度
+        // 计算 Softmax 对输入的梯度
+        let maxInput = inputAll.max() ?? 0.0
+        let expValues = inputAll.map { exp($0 - maxInput) }
+        let sumExp = expValues.reduce(0, +)
+        let probabilities = expValues.map { $0 / sumExp }
+        
+        let gradient = probabilities[index] * (1 - probabilities[index])
+        return gradient * outputGradients[index]
     }
 }
 
