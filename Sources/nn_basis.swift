@@ -72,25 +72,29 @@ class CrossEntropy: LossFunction {
 
 //MARK: 归一化函数
 protocol NormalizationFunction {
-    func forward(inputAll: [Double], where: Int) -> Double
-    func backward(dInputAll: [Double], where: Int) -> Double
+    func forward(inputAll: [Double], forNode: Int) -> Double
+    func backward(dInputAll: [Double], forNode: Int) -> Double
 }
 //softmax
 class Softmax: NormalizationFunction {
-    func forward(inputAll: [Double], where index: Int) -> Double {
+    func forward(inputAll: [Double], forNode index: Int) -> Double {
         let maxInput = inputAll.max() ?? 0.0
         //减去最大值, 防止由于指数过大导致溢出, 或指数过小导致精度问题
         let expValues = inputAll.map { exp($0 - maxInput) }
         let sumExp = expValues.reduce(0, +)
         return expValues[index] / sumExp
     }
-    func backward(dInputAll: [Double], where index: Int) -> Double {
-        let maxInput = dInputAll.max() ?? 0.0
-        let expValues = dInputAll.map { exp($0 - maxInput) }
-        let sumExp = expValues.reduce(0, +)
-        let probabilities = expValues.map { $0 / sumExp }
-        let gradient = probabilities[index] * (1 - probabilities[index])
-        return gradient * dInputAll[index]
+    //softmax求导为全梯度
+    func backward(dInputAll: [Double], forNode index: Int) -> Double {
+        var dValue: Double = 0.0
+        for i in 0..<dInputAll.count {
+            if i == index {
+                dValue += dInputAll[i] * (1 - dInputAll[i])
+            }else {
+                dValue += dInputAll[i] * dInputAll[index]
+            }
+        }
+        return dValue
     }
 }
 
