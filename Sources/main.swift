@@ -45,19 +45,19 @@ import CoreGraphics
 //     }
 // }
 
-let nnConfigTest = NNConfig(inputSize: 10, initBias: 0.01, layerStructure: [10,20,20,10], weightInitializer: Node.heInitializer(inputSize:_:), biasInitializer: Node.biasInitializer(value:))
-let nnTest = NN(config: nnConfigTest)
+// let nnConfigTest = NNConfig(inputSize: 10, initBias: 0.01, layerStructure: [10,20,20,10], weightInitializer: Node.heInitializer(inputSize:_:), biasInitializer: Node.biasInitializer(value:))
+// let nnTest = NN(networkConfig: nnConfigTest)
 
-print("Number of layers: \(nnTest.layerCount)")
-for (indexL, layer) in nnTest.layers.enumerated() {
-    print("Layer \(indexL+1): \(layer.nodeCount) nodes, with \(layer.inputSize) input(s), and \(layer.outputSize ?? 0) output(s)")
-}
-print("Here's the parameters:")
-for (layerIndex, layer) in nnTest.layers.enumerated() {
-    print("Layer \(layerIndex + 1):")
-    for (nodeIndex, node) in layer.nodes.enumerated() {
-        print(String(format:"  Node :%d",(nodeIndex + 1)))
-        print(String(format: "    Weights: %@", node.weight.map { String(format: "%.4f", $0) }.joined(separator: ", ")))
-        print(String(format: "    Bias: %.4f", node.bias))
-    }
-}
+// print("Number of layers: \(nnTest.layerCount)")
+// for (indexL, layer) in nnTest.layers.enumerated() {
+//     print("Layer \(indexL+1): \(layer.nodeCount) nodes, with \(layer.inputSize) input(s), and \(layer.outputSize ?? 0) output(s)")
+// }
+// print("Here's the parameters:")
+// for (layerIndex, layer) in nnTest.layers.enumerated() {
+//     print("Layer \(layerIndex + 1):")
+//     for (nodeIndex, node) in layer.nodes.enumerated() {
+//         print(String(format:"  Node :%d",(nodeIndex + 1)))
+//         print(String(format: "    Weights: %@", node.weight.map { String(format: "%.4f", $0) }.joined(separator: ", ")))
+//         print(String(format: "    Bias: %.4f", node.bias))
+//     }
+// }

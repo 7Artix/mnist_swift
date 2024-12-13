@@ -43,11 +43,27 @@ struct NNConfig {
     }
 }
 
+struct TrainingConfig {
+    //单个batch的样本数量
+    var batchSize: Int
+    //学习率
+    var learningRate: Double
+    //损失函数始终持续低于历史最佳时, 最多尝试次数
+    var negativeAttempts: Int
+    init(batchSize: Int, learningRate: Double, negativeAttempts: Int) {
+        self.batchSize = batchSize
+        self.learningRate = learningRate
+        self.negativeAttempts = negativeAttempts
+    }
+}
+
 class NN {
     struct NNParameter {
         var weights: [[[Double]]]
         var biases: [[Double]]
     }
+    //训练配置
+    var trainingConfig: TrainingConfig
     //权重张量: 3维
     var weights: [[[Double]]]
     //激活值矩阵
@@ -58,6 +74,8 @@ class NN {
     var activationFunctions: [[ActivationFunction]]
     //输出层结构体
     var outputLayer: OutputLayer
+    //输入层节点数量(输入层不包含在网络结构中)
+    var inputSize: Int
     //输出层节点数量
     var outputSize: Int
     //层结构, 存储每层节点的数量, 便于初始化
@@ -68,16 +86,25 @@ class NN {
     var dWeights: [[[Double]]]
     //相对偏置矩阵的梯度
     var dBiases: [[Double]]
+    //batch多样本梯度存储
+    var dWeightsBatch: [[[[Double]]]] = []
+    var dBiasesBatch: [[[Double]]] = []
     //历史最佳参数
     var historyBest: NNParameter?
+    //上次前向传播的预测结果
+    var lastPrediction: Int?
+    //上次前向传播的损失值
+    var lastLoss: Double?
 
-    init(config: NNConfig){
-        self.outputLayer = config.outputLayer
+    init(networkConfig: NNConfig, trainingConfig: TrainingConfig){
+        self.trainingConfig = trainingConfig
+        self.outputLayer = networkConfig.outputLayer
+        self.inputSize = networkConfig.inputSize
         self.outputSize = self.outputLayer.outputSize
         //从网络结构获取层结构
-        layerStructure = config.structure.map {$0.count}
+        layerStructure = networkConfig.structure.map {$0.count}
         //层结构加入输入层数量, 但并无实际节点, 仅便于后续建立连接赋权重
-        layerStructure.insert(config.inputSize, at: 0)
+        layerStructure.insert(networkConfig.inputSize, at: 0)
         //层结构加入输出层数量, 实际节点由outputLayer, 仅便于后续建立连接赋权重
         layerStructure.append(outputSize)
         //建立权重结构, 多加入了从输出层到归一化层的无效权重
@@ -95,7 +122,7 @@ class NN {
         weights = weightStructure.map { node in node.map {Array(repeating: 0.0, count: $0)}}
         dWeights = weightStructure.map { node in node.map {Array(repeating: 0.0, count: $0)}}
         //根据配置初始化权重值, 偏置值与激活函数
-        for (indexLayer, layer) in config.structure.enumerated() {
+        for (indexLayer, layer) in networkConfig.structure.enumerated() {
             let inputNodeCount = layerStructure[indexLayer]
             let outputNodeCount = layerStructure[indexLayer+2]
             for (indexNode, node) in layer.enumerated() {
@@ -108,8 +135,30 @@ class NN {
         }
     }
 
-    func fp(dataInOneDim: [Double], labels: [Double]) {
+    func fp(input: [Double], labels: [Double]) {
+        if input.count != self.inputSize {
+            fatalError("Input data doesn't match the network")
+        }
+    }
+
+    func bp(input: [Double], labels: [Double]) {
         
+    }
+
+    func getPrediction() -> Int {
+        guard let predictionValue = self.lastPrediction else {
+            print("Haven't propagate yet")
+            return -1
+        }
+        return predictionValue
+    }
+
+    func getLoss() -> Double {
+        guard let lossValue = self.lastLoss else {
+            print("Haven't propagate yet")
+            return -1
+        }
+        return lossValue
     }
 
     //保存最佳参数

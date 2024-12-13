@@ -73,10 +73,9 @@ class CrossEntropy: LossFunction {
 //MARK: 归一化函数
 protocol NormalizationFunction {
     func forward(inputAll: [Double], where: Int) -> Double
-    func backward(inputAll: [Double], where: Int) -> Double
+    func backward(dInputAll: [Double], where: Int) -> Double
 }
 //softmax
-
 class Softmax: NormalizationFunction {
     func forward(inputAll: [Double], where index: Int) -> Double {
         let maxInput = inputAll.max() ?? 0.0
@@ -85,16 +84,13 @@ class Softmax: NormalizationFunction {
         let sumExp = expValues.reduce(0, +)
         return expValues[index] / sumExp
     }
-    func backward(inputGradients: [Double], where index: Int) -> Double {
-        // 假设 inputAll 是 Softmax 输入，outputGradients 是损失函数对 Softmax 输出的梯度
-        // 计算 Softmax 对输入的梯度
-        let maxInput = inputAll.max() ?? 0.0
-        let expValues = inputAll.map { exp($0 - maxInput) }
+    func backward(dInputAll: [Double], where index: Int) -> Double {
+        let maxInput = dInputAll.max() ?? 0.0
+        let expValues = dInputAll.map { exp($0 - maxInput) }
         let sumExp = expValues.reduce(0, +)
         let probabilities = expValues.map { $0 / sumExp }
-        
         let gradient = probabilities[index] * (1 - probabilities[index])
-        return gradient * outputGradients[index]
+        return gradient * dInputAll[index]
     }
 }
 
