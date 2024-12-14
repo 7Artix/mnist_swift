@@ -21,19 +21,27 @@ let mnistTest = MNIST(database: testData)
 // }
 
 var networkStructure: [[NodeStructure]] = []
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 2))
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 3))
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 2))
-var outputlayer = OutputLayer(outputSize: 2, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
-var networkConfig = NNConfig(inputSize: 4, structure: networkStructure, outputLayer: outputlayer)
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 784))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 784))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 10))
+var outputlayer = OutputLayer(outputSize: 10, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
+var networkConfig = NNConfig(inputSize: 784, structure: networkStructure, outputLayer: outputlayer)
 var trainingConfig = TrainingConfig(batchSize: 10, learningRate: 0.001, negativeAttempts: 5)
 let network = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
 
-print(network.activations)
-print(network.activationFunctions)
-print(network.biases)
-print(network.dBiases)
-print(network.dBiasesBatch)
-print(network.weights)
-print(network.dWeights)
-print(network.dWeightsBatch)
+let testImage1Dim = mnistTraining.getImage(index: 0).0.flatMap{ $0 }.map { Double($0) }
+let testLabel = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+network.fp(input: testImage1Dim, labels: testLabel)
+print(network.outputLayer.valueNetwork)
+print(network.outputLayer.valueNormalized)
+print(network.lastLoss ?? "Call fp first")
+
+// print(network.activations)
+// print(network.activationFunctions)
+// print(network.biases)
+// print(network.dBiases)
+// print(network.dBiasesBatch)
+// print(network.weights)
+// print(network.dWeights)
+// print(network.dWeightsBatch)

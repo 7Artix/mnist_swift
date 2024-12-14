@@ -2,24 +2,24 @@ import Foundation
 
 //MARK: 激活函数
 protocol ActivationFunction {
-    static func forward(_ x: Double) -> Double
-    static func backward(_ x: Double) -> Double
+    func forward(_ x: Double) -> Double
+    func backward(_ x: Double) -> Double
 }
 //ReLU
 class ReLU: ActivationFunction {
-    static func forward(_ x: Double) -> Double {
+    func forward(_ x: Double) -> Double {
         return max(0, x)
     }
-    static func backward(_ x: Double) -> Double {
+    func backward(_ x: Double) -> Double {
         return x > 0 ? 1.0 : 0.0
     }
 }
 //Sigmoid
 class Sigmoid: ActivationFunction {
-    static func forward(_ x: Double) -> Double {
+    func forward(_ x: Double) -> Double {
         return 1 / (1 + exp(-x))
     }
-    static func backward(_ x: Double) -> Double {
+    func backward(_ x: Double) -> Double {
         let y = forward(x)
         return y * (1 - y)
     }

@@ -121,6 +121,8 @@ class NN {
         layerStructure.insert(networkConfig.inputSize, at: 0)
         //层结构加入输出层数量, 实际节点由outputLayer, 仅便于后续建立连接赋权重
         layerStructure.append(outputSize)
+        //layerStructure结构: [input层节点数量, 隐含层1节点数量, ... , 隐含层n节点数量, output层节点数量]
+
         //建立权重结构, 多加入了从输出层到归一化层的无效权重
         weightStructure = []
         for index in 0..<(layerStructure.count - 1) {
@@ -158,6 +160,21 @@ class NN {
         if labels.count != self.outputSize {
             fatalError("Error: FP. Input labels doesn't match the network")
         }
+        var previousActivations = input
+        for(indexLayer, weightsLayer) in self.weights.enumerated() {
+            let countNode = self.activations[indexLayer].count
+            for indexNode in 0..<countNode {
+                let weightsNode = weightsLayer[indexNode]
+                let weightedSum = zip(weightsNode, previousActivations).reduce(0.0) { sum, pair in sum + pair.0 * pair.1} + self.biases[indexLayer][indexNode]
+                self.activations[indexLayer][indexNode] = self.activationFunctions[indexLayer][indexNode].forward(weightedSum)
+            }
+            previousActivations = self.activations[indexLayer]
+        }
+        self.outputLayer.valueNetwork = previousActivations
+        for (index, _) in self.outputLayer.valueNetwork.enumerated() {
+            self.outputLayer.valueNormalized[index] = self.outputLayer.normalizationFunction.forward(inputAll: self.outputLayer.valueNetwork, forNode: index)
+        }
+        self.lastLoss = self.outputLayer.lossFunction.forward(predictions: self.outputLayer.valueNormalized, labels: labels)
     }
 
     func bp(input: [Double], labels: [Double]) {
