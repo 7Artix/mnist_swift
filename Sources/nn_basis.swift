@@ -43,30 +43,34 @@ func constantInitializer(_: Int?, _: Int?) -> Double {
 
 //MARK: 损失函数
 protocol LossFunction {
-    init()
+    //init()
     func forward(predictions: [Double], labels: [Double]) -> Double
-    func backward(predictions: [Double], labels: [Double]) -> [Double]
+    func backward(index: Int) -> Double
+    func reset()
 }
 // 交叉熵损失函数
 class CrossEntropy: LossFunction {
-    required init() {}
+    //required init() {}
+    var predictions: [Double]?
+    var labels: [Double]?
     func forward(predictions: [Double], labels: [Double]) -> Double {
         guard predictions.count == labels.count else {
-            fatalError("The number of predictions doesn't match the labels'")
+            fatalError("Error: CrossEntropy. Predictions doesn't match the labels in count")
         }
-        var loss: Double = 0.0
-        for (index, label) in labels.enumerated() {
-            loss -= label * log(predictions[index] + 1e-15) // 防止log(0)的情况
-        }
-        return loss / Double(labels.count)
+        self.predictions = predictions
+        self.labels = labels
+        let outputForward = zip(predictions, labels).map { prediction, label in 0.0 - label * log(prediction + 1e-15) }
+        return outputForward.reduce(0.0 , +)
     }
-    func backward(predictions: [Double], labels: [Double]) -> [Double] {
-        guard predictions.count == labels.count else {
-            fatalError("The number of predictions doesn't match the labels'")
+    func backward(index: Int) -> Double {
+        guard let predictions = self.predictions, let labels = self.labels else {
+            fatalError("Error: CrossEntropy. Make sure forward() is called before backward")
         }
-        return zip(predictions, labels).map { (prediction, label) in
-            prediction - label
-        }
+        return 0.0 - (labels[index] / predictions[index])
+    }
+    func reset() {
+        self.predictions = nil
+        self.labels = nil
     }
 }
 
@@ -74,27 +78,41 @@ class CrossEntropy: LossFunction {
 protocol NormalizationFunction {
     func forward(inputAll: [Double], forNode: Int) -> Double
     func backward(dInputAll: [Double], forNode: Int) -> Double
+    func reset()
 }
 //softmax
 class Softmax: NormalizationFunction {
+    var outputForward: [Double]?
     func forward(inputAll: [Double], forNode index: Int) -> Double {
         let maxInput = inputAll.max() ?? 0.0
         //减去最大值, 防止由于指数过大导致溢出, 或指数过小导致精度问题
         let expValues = inputAll.map { exp($0 - maxInput) }
-        let sumExp = expValues.reduce(0, +)
-        return expValues[index] / sumExp
+        let sumExp = expValues.reduce(0.0, +)
+        //记录前向传播输出值
+        self.outputForward = expValues.map { $0 / sumExp }
+        return self.outputForward![index]
     }
     //softmax求导为全梯度
     func backward(dInputAll: [Double], forNode index: Int) -> Double {
+        guard let outputForward = self.outputForward else {
+            fatalError("Error: softmax. Make sure forward() is called before backward()")
+        }
+        if dInputAll.count != outputForward.count {
+            fatalError("Error: softmax. Input gradient dosen't match the output layer")
+        }
         var dValue: Double = 0.0
         for i in 0..<dInputAll.count {
             if i == index {
-                dValue += dInputAll[i] * (1 - dInputAll[i])
+                dValue += dInputAll[i] * (outputForward[i] * (1 - outputForward[i]))
             }else {
-                dValue += dInputAll[i] * dInputAll[index]
+                dValue += 0.0 - (dInputAll[i] * (outputForward[i] * outputForward[index]))
             }
         }
         return dValue
+    }
+    //对所有输出层节点梯度求值后, 将前向输出数组置nil
+    func reset() {
+        self.outputForward = nil
     }
 }
 

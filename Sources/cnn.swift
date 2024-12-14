@@ -129,11 +129,11 @@ class CNN: NN {
         switch method {
             case .average:
                 var valueSum: Int64 = 0
-                valueSum = Int64(values.reduce(0) {$0 + $1})
+                valueSum = Int64(values.reduce(0, {$0 + $1}))
                 result = T(valueSum / Int64(values.count))
             case .l2:
                 var squareSum: UInt64 = 0
-                squareSum = UInt64(values.reduce(0) {$0 + $1 * $1})
+                squareSum = UInt64(values.reduce(0, {$0 + $1 * $1}))
                 result = T(sqrt(Double(squareSum)))
             case .max:
                 result = values.max() ?? T(0)
