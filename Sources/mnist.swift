@@ -1,58 +1,39 @@
 import Foundation
 
-class Database {
-    enum DatabasePath {
-        case TrainingImages
-        case TrainingLabels
-        case TestImages
-        case TestLabels
-    }
+class MNIST {
+    let numberOfItems: Int
+    let numberOfRows: Int
+    let numberOfCols: Int
+    var database: Database
 
-    var trainingImagesPath = "./mnist_database/train-images.idx3-ubyte"
-    var trainingLabelsPath = "./mnist_database/train-labels.idx1-ubyte"
-    var testImagesPath = "./mnist_database/t10k-images.idx3-ubyte"
-    var testLabelsPath = "./mnist_database/t10k-labels.idx1-ubyte"
-
-    var trainingImagesData: Data
-    var trainingLabelsData: Data
-    var testImagesData: Data
-    var testLabelsData: Data
-
-    init(trainingImagesPath: String = "./mnist_database/train-images.idx3-ubyte", 
-    trainingLabelsPath: String = "./mnist_database/train-labels.idx1-ubyte", 
-    testImagesPath: String = "./mnist_database/t10k-images.idx3-ubyte", 
-    testLabelsPath: String = "./mnist_database/t10k-labels.idx1-ubyte") {
-        do {
-            self.trainingImagesData = try Data(contentsOf: URL(fileURLWithPath: trainingImagesPath))
-            self.trainingLabelsData = try Data(contentsOf: URL(fileURLWithPath: trainingLabelsPath))
-            self.testImagesData = try Data(contentsOf: URL(fileURLWithPath: testImagesPath))
-            self.testLabelsData = try Data(contentsOf: URL(fileURLWithPath: testLabelsPath))
-        } catch {
-            fatalError("Error: Load failed.")
+    init(database: Database) {
+        self.database = database
+        let magicNumberImages = self.database.imagesData[0..<4].withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        if magicNumberImages != 0x00000803 {
+            fatalError("Error: MNIST. Data is broken")
         }
-    }
-
-    func setPath(for target: DatabasePath, with path: String) {
-        switch target {
-        case .TrainingImages:
-            self.trainingImagesPath = path
-        case .TrainingLabels:
-            self.trainingLabelsPath = path
-        case .TestImages:
-            self.testImagesPath = path
-        case .TestLabels:
-            self.testLabelsPath = path
+        let magicNumberLabels = self.database.labelsData[0..<4].withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        if magicNumberLabels != 0x00000801 {
+            fatalError("Error: MNIST. Data is broken")
         }
-    }
-
-    func reloadDatabase() {
-        do {
-            self.trainingImagesData = try Data(contentsOf: URL(fileURLWithPath: trainingImagesPath))
-            self.trainingLabelsData = try Data(contentsOf: URL(fileURLWithPath: trainingLabelsPath))
-            self.testImagesData = try Data(contentsOf: URL(fileURLWithPath: testImagesPath))
-            self.testLabelsData = try Data(contentsOf: URL(fileURLWithPath: testLabelsPath))
-        } catch {
-            fatalError("Error: Load failed.")
+        let numberOfItemsImages = self.database.imagesData[4..<8].withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let numberOfItemsLabels = self.database.labelsData[4..<8].withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        if numberOfItemsImages != numberOfItemsLabels {
+            fatalError("Error: MNIST. Data is broken")
         }
+        self.numberOfItems = Int(numberOfItemsImages)
+        self.numberOfRows = Int(self.database.imagesData[8..<12].withUnsafeBytes { $0.load(as: UInt32.self).bigEndian })
+        self.numberOfCols = Int(self.database.imagesData[12..<16].withUnsafeBytes { $0.load(as: UInt32.self).bigEndian })
+    }
+    func getImage(index: Int) -> ([[UInt8]], Int) {
+        var image: [[UInt8]] = []
+        for indexRow in 0..<self.numberOfRows {
+            let indexRowStart = indexRow * self.numberOfCols + 16 + (index * self.numberOfRows * self.numberOfCols)
+            let indexRowEnd = indexRowStart + self.numberOfCols
+            let arrayRow = Array(database.imagesData[indexRowStart..<indexRowEnd]).map { UInt8($0) }
+            image.append(arrayRow)
+        }
+        let label: Int = Int(database.labelsData[index + 8])
+        return (image, label)
     }
 }

@@ -61,3 +61,20 @@ import CoreGraphics
 //         print(String(format: "    Bias: %.4f", node.bias))
 //     }
 // }
+
+let pathTrainingImages = "./mnist_database/train-images.idx3-ubyte"
+let pathTrainingLabels = "./mnist_database/train-labels.idx1-ubyte"
+let trainingData = Database(imagesPath: pathTrainingImages, labelsPath: pathTrainingLabels)
+
+let mnist = MNIST(database: trainingData)
+
+let firstImage = mnist.getImage(index: 0).0
+let firstLabel = mnist.getImage(index: 0).1
+
+do {
+    let imageRecipeGray8 = ImageRecipe(width: 28, height: 28, pixelFormat: .GRAY8, provider: try .makeProviderGrayscale(from: firstImage))
+    let cgImageGray8 = try CGImage.createCGImage(imageRecipe: imageRecipeGray8)
+    try cgImageGray8.saveCGImage(useName: "first_image_label_\(firstLabel)", toPath: "./test", as: .png)
+}
+
+//print(mnist.getImage(index: 0))
