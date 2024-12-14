@@ -10,12 +10,19 @@ struct NodeStructure {
 //输出层结构体
 struct OutputLayer {
     var outputSize: Int
+    //输出层(激活值): 神经网络输出的激活值
     var valueNetwork: [Double]
+    //输出层(归一值): 归一化后值
     var valueNormalized: [Double]
+    //对损失函数求导梯度
     var dLoss: [Double]?
+    //对归一化函数求导梯度
     var dNormalization: [Double]?
+    //归一化函数
     var normalizationFunction: NormalizationFunction
+    //损失函数
     var lossFunction: LossFunction
+
     init(outputSize: Int, normalizationFunction: NormalizationFunction, lossFunction: LossFunction) {
         self.outputSize = outputSize
         self.valueNetwork = Array(repeating: Double(0.0), count: outputSize)
@@ -27,15 +34,19 @@ struct OutputLayer {
 
 //神经网络配置结构体
 struct NNConfig {
+    //输入层参数数量, 本层并无实际节点, 也不包括激活等操作
     let inputSize: Int
+    //神经网络结构, 配置层数, 激活函数, 初始化值等
     var structure: [[NodeStructure]]
+    //输出层结构
     var outputLayer: OutputLayer
+
     init(inputSize: Int, structure: [[NodeStructure]], outputLayer: OutputLayer) {
         guard let outputSizeFromStructure = structure.last?.count else {
-            fatalError("Error with input node structure")
+            fatalError("Error: NNConfig. Incorrect input node structure")
         }
         if (outputLayer.outputSize != outputSizeFromStructure) {
-            fatalError("Output layer doesn't match the network")
+            fatalError("Error: NNConfig. Output layer doesn't match the network")
         }
         self.inputSize = inputSize
         self.structure = structure
@@ -43,6 +54,7 @@ struct NNConfig {
     }
 }
 
+//训练配置
 struct TrainingConfig {
     //单个batch的样本数量
     var batchSize: Int
@@ -50,6 +62,7 @@ struct TrainingConfig {
     var learningRate: Double
     //损失函数始终持续低于历史最佳时, 最多尝试次数
     var negativeAttempts: Int
+
     init(batchSize: Int, learningRate: Double, negativeAttempts: Int) {
         self.batchSize = batchSize
         self.learningRate = learningRate
@@ -58,6 +71,7 @@ struct TrainingConfig {
 }
 
 class NN {
+    //网络参数结构体
     struct NNParameter {
         var weights: [[[Double]]]
         var biases: [[Double]]
@@ -109,8 +123,10 @@ class NN {
         layerStructure.append(outputSize)
         //建立权重结构, 多加入了从输出层到归一化层的无效权重
         weightStructure = []
-        for (index, nodeCount) in layerStructure.enumerated() {
-            weightStructure.append( Array(repeating: nodeCount, count: layerStructure[index + 1]) )
+        for index in 0..<(layerStructure.count - 1) {
+            let nodeCount = layerStructure[index]
+            let nextLayerNodeCount = layerStructure[index + 1]
+            weightStructure.append(Array(repeating: nodeCount, count: nextLayerNodeCount))
         }
         //去除输出层到归一化层的无效权重
         weightStructure = weightStructure.dropLast()
@@ -124,7 +140,7 @@ class NN {
         //根据配置初始化权重值, 偏置值与激活函数
         for (indexLayer, layer) in networkConfig.structure.enumerated() {
             let inputNodeCount = layerStructure[indexLayer]
-            let outputNodeCount = layerStructure[indexLayer+2]
+            let outputNodeCount = layerStructure[indexLayer + 2]
             for (indexNode, node) in layer.enumerated() {
                 biases[indexLayer][indexNode] = node.bias
                 activationFunctions[indexLayer][indexNode] = node.activationFunction
@@ -137,12 +153,19 @@ class NN {
 
     func fp(input: [Double], labels: [Double]) {
         if input.count != self.inputSize {
-            fatalError("Input data doesn't match the network")
+            fatalError("Error: FP. Input data doesn't match the network")
+        }
+        if labels.count != self.outputSize {
+            fatalError("Error: FP. Input labels doesn't match the network")
         }
     }
 
     func bp(input: [Double], labels: [Double]) {
         
+    }
+
+    func descent(input: [Double], labels: [Double]) {
+
     }
 
     func getPrediction() -> Int {
