@@ -21,23 +21,34 @@ let mnistTest = MNIST(database: testData)
 // }
 
 var networkStructure: [[NodeStructure]] = []
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 784))
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 784))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 512))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 256))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 128))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 64))
 networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 10))
 var outputlayer = OutputLayer(outputSize: 10, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
 var networkConfig = NNConfig(inputSize: 784, structure: networkStructure, outputLayer: outputlayer)
 var trainingConfig = TrainingConfig(batchSize: 10, learningRate: 0.001, negativeAttempts: 5)
 let network = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
 
-let testImage1Dim = mnistTraining.getImage(index: 0).0.flatMap{ $0 }.map { Double($0) }
-let testLabel = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+// let testImage1Dim = mnistTraining.getImage(index: 0).0.flatMap{ $0 }.map { Double($0) }
+// let testLabel = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 // network.fp(input: testImage1Dim, labels: testLabel)
 // print(network.outputLayer.valueNetwork)
 // print(network.outputLayer.valueNormalized)
 // print(network.lastLoss ?? "Call fp first")
 
-print(mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10),terminator: "\n")
+let testImagesBatch = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10).0
+let testLabelsBatch = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10).1
+
+network.descentbatches(inputs: testImagesBatch, labels: testLabelsBatch)
+
+let checkImage = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 1).0[0]
+let checkLabel = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 1).1[0]
+
+network.fp(input: checkImage, labels: checkLabel)
+print(network.getLoss())
 
 // let startTime = Date()
 // for i in 0..<100 {
