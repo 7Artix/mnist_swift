@@ -20,35 +20,58 @@ let mnistTest = MNIST(database: testData)
 //     try cgImageGray8.saveCGImage(useName: "first_image_label_\(firstLabel)", toPath: "./test", as: .png)
 // }
 
+// var networkStructure: [[NodeStructure]] = []
+// networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 4))
+// networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 3))
+// networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 2))
+// var outputlayer = OutputLayer(outputSize: 2, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
+// var networkConfig = NNConfig(inputSize: 5, structure: networkStructure, outputLayer: outputlayer)
+// var trainingConfig = TrainingConfig(batchSize: 1, learningRate: 0.005, negativeAttempts: 5)
+// let network = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
+// print("Layers structure\(network.layerStructure)")
+// print("Weights structure: \(network.weightStructure)")
+// network.printParameters()
+// network.fp(input: [1.0, 1.0, 2.0, 3.0, 5.0], labels: [1.0, 0.0])
+// print("\nAfter FP:")
+// network.printParameters()
+// network.bp()
+// var oneStepParameter: NN.NNParameter = NN.NNParameter(weights: network.dWeights, biases: network.dBiases)
+// network.updateParameters(withGradients: oneStepParameter)
+// print("\nAfter Descent:")
+// network.printParameters()
+
 var networkStructure: [[NodeStructure]] = []
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 512))
 networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 256))
 networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 128))
 networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 64))
 networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 10))
 var outputlayer = OutputLayer(outputSize: 10, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
 var networkConfig = NNConfig(inputSize: 784, structure: networkStructure, outputLayer: outputlayer)
-var trainingConfig = TrainingConfig(batchSize: 10, learningRate: 0.001, negativeAttempts: 5)
+var trainingConfig = TrainingConfig(batchSize: 10, learningRate: 0.005, negativeAttempts: 5)
 let network = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
 
-// let testImage1Dim = mnistTraining.getImage(index: 0).0.flatMap{ $0 }.map { Double($0) }
-// let testLabel = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+let testImage1Dim = mnistTraining.getImage(index: 0).0.flatMap{ $0 }.map { Double($0) }
+let testLabel = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+let testImagesBatch = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10).0
+let testLabelsBatch = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10).1
+network.descentbatches(inputs: testImagesBatch, labels: testLabelsBatch)
 
 // network.fp(input: testImage1Dim, labels: testLabel)
 // print(network.outputLayer.valueNetwork)
 // print(network.outputLayer.valueNormalized)
 // print(network.lastLoss ?? "Call fp first")
 
-let testImagesBatch = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10).0
-let testLabelsBatch = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10).1
+// let checkImage = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 1).0[0]
+// let checkLabel = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 1).1[0]
 
-network.descentbatches(inputs: testImagesBatch, labels: testLabelsBatch)
-
-let checkImage = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 1).0[0]
-let checkLabel = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 1).1[0]
-
-network.fp(input: checkImage, labels: checkLabel)
-print(network.getLoss())
+// print("weights: \(network.weights[4][0])")
+// print("gradients: \(network.dWeightsBatch)")
+// network.descentbatches(inputs: testImagesBatch, labels: testLabelsBatch)
+// network.fp(input: checkImage, labels: checkLabel)
+// print(network.getLoss())
+// print("weights: \(network.weights[4][0])")
+// print("gradients: \(network.dWeightsBatch[0][4][0])")
 
 // let startTime = Date()
 // for i in 0..<100 {

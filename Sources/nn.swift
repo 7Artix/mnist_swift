@@ -82,10 +82,12 @@ class NN {
     var trainingConfig: TrainingConfig
     //权重张量: 3维
     var weights: [[[Double]]]
-    //激活值矩阵
-    var activations: [[Double]]
     //权重矩阵
     var biases: [[Double]]
+    //线性叠加值矩阵
+    var zValues: [[Double]]
+    //激活值矩阵
+    var activations: [[Double]]
     //激活函数矩阵
     var activationFunctions: [[ActivationFunction]]
     //输出层结构体
@@ -120,29 +122,30 @@ class NN {
         self.inputSize = networkConfig.inputSize
         self.outputSize = self.outputLayer.outputSize
         //从网络结构获取层结构
-        layerStructure = networkConfig.structure.map {$0.count}
+        self.layerStructure = networkConfig.structure.map {$0.count}
         //层结构加入输入层数量, 但并无实际节点, 仅便于后续建立连接赋权重
-        layerStructure.insert(networkConfig.inputSize, at: 0)
+        self.layerStructure.insert(networkConfig.inputSize, at: 0)
         //层结构加入输出层数量, 实际节点由outputLayer, 仅便于后续建立连接赋权重
-        layerStructure.append(outputSize)
+        self.layerStructure.append(outputSize)
         //layerStructure结构: [input层节点数量, 隐含层1节点数量, ... , 隐含层n节点数量, output层节点数量]
 
         //建立权重结构, 多加入了从输出层到归一化层的无效权重
-        weightStructure = []
-        for index in 0..<(layerStructure.count - 1) {
-            let nodeCount = layerStructure[index]
-            let nextLayerNodeCount = layerStructure[index + 1]
-            weightStructure.append(Array(repeating: nodeCount, count: nextLayerNodeCount))
+        self.weightStructure = []
+        for index in 0..<(self.layerStructure.count - 1) {
+            let nodeCount = self.layerStructure[index]
+            let nextLayerNodeCount = self.layerStructure[index + 1]
+            self.weightStructure.append(Array(repeating: nodeCount, count: nextLayerNodeCount))
         }
         //去除输出层到归一化层的无效权重
-        weightStructure = weightStructure.dropLast()
+        self.weightStructure = weightStructure.dropLast()
         //初始化
-        activations = layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0) }
-        biases = layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
-        activationFunctions = layerStructure.dropFirst().map { Array(repeating: ReLU(), count: $0)}
-        dBiases = layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
-        weights = weightStructure.map { node in node.map {Array(repeating: 0.0, count: $0)}}
-        dWeights = weightStructure.map { node in node.map {Array(repeating: 0.0, count: $0)}}
+        self.biases = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
+        self.zValues = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
+        self.activations = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
+        self.activationFunctions = self.layerStructure.dropFirst().map { Array(repeating: ReLU(), count: $0)}
+        self.dBiases = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
+        self.weights = self.weightStructure.map { node in node.map {Array(repeating: 0.0, count: $0)}}
+        self.dWeights = self.weightStructure.map { node in node.map {Array(repeating: 0.0, count: $0)}}
         //根据配置初始化权重值, 偏置值与激活函数
         for (indexLayer, layer) in networkConfig.structure.enumerated() {
             let inputNodeCount = layerStructure[indexLayer]
@@ -171,6 +174,7 @@ class NN {
             for indexNode in 0..<countNode {
                 let weightsNode = weightsLayer[indexNode]
                 let weightedSum = zip(weightsNode, activationsPreviousLayer).reduce(0.0) { sum, pair in sum + pair.0 * pair.1} + self.biases[indexLayer][indexNode]
+                self.zValues[indexLayer][indexNode] = weightedSum
                 self.activations[indexLayer][indexNode] = self.activationFunctions[indexLayer][indexNode].forward(weightedSum)
             }
             activationsPreviousLayer = self.activations[indexLayer]
@@ -212,7 +216,7 @@ class NN {
                     }
                 } else {
                     for indexToPreviousNode in 0..<self.weights[indexLayer][indexNode].count {
-                        self.dWeights[indexLayer][indexNode][indexToPreviousNode] = gradientsFromPreviousLayer[indexNode] * self.activations[indexLayer - 1][indexToPreviousNode]
+                        self.dWeights[indexLayer][indexNode][indexToPreviousNode] = gradientsFromPreviousLayer[indexNode] * self.activations[indexLayer - 1][indexToPreviousNode] * self.activationFunctions[indexLayer][indexNode].backward(self.zValues[indexLayer][indexNode])
                     }
                 }
                 if indexLayer > 0 {
@@ -221,7 +225,10 @@ class NN {
             }
             gradientsFromPreviousLayer = gradientsCurrentLayerForPrevious
         }
+        //反向传播后将输入值/激活值/线性叠加值清零
         InputsLast = nil
+        self.zValues = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
+        self.activations = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
     }
 
     func resetGradients() {
@@ -308,6 +315,20 @@ class NN {
             return -1
         }
         return lossValue
+    }
+
+    func printParameters() {
+        print("Here's the parameters:")
+        for (indexLayer, _) in self.weights.enumerated() {
+            print("Layer \(indexLayer + 1)")
+            for (indexNode, _) in self.weights[indexLayer].enumerated() {
+                print(String(format: "  Node: %d, bias: %.3f, dBias: %.3f, activation: %.3f", indexNode + 1, self.biases[indexLayer][indexNode], self.dBiases[indexLayer][indexNode], self.activations[indexLayer][indexNode]))
+                print(String(format: "    Weights: %@    dWeights: %@", self.weights[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: ", "), self.dWeights[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: ", ")))
+            }
+        }
+        print(String(format: "Output Layer: \n  Predictions: %@", self.outputLayer.valueNormalized.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
+        print(String(format: "  dLoss:         %@", self.outputLayer.dLoss.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
+        print(String(format: "  dNormalizaton: %@", self.outputLayer.dNormalization.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
     }
 
     //保存最佳参数

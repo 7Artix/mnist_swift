@@ -53,7 +53,7 @@ class MNIST {
         var labelsInOneDimDouble: [[Double]] = []
         for indexBatch in 0..<batchSize {
             let image = self.getImage(index: index + indexBatch).0.flatMap { row in
-                row.map { Double($0) / 255.0 }
+                row.map { Double($0) }
             }
             imagesInOneDimDouble.append(image)
             let label = self.getImage(index: index + indexBatch).1
