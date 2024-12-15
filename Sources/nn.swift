@@ -15,9 +15,9 @@ struct OutputLayer {
     //输出层(归一值): 归一化后值
     var valueNormalized: [Double]
     //对损失函数求导梯度
-    var dLoss: [Double]?
+    var dLoss: [Double]
     //对归一化函数求导梯度
-    var dNormalization: [Double]?
+    var dNormalization: [Double]
     //归一化函数
     var normalizationFunction: NormalizationFunction
     //损失函数
@@ -25,8 +25,10 @@ struct OutputLayer {
 
     init(outputSize: Int, normalizationFunction: NormalizationFunction, lossFunction: LossFunction) {
         self.outputSize = outputSize
-        self.valueNetwork = Array(repeating: Double(0.0), count: outputSize)
-        self.valueNormalized = Array(repeating: Double(0.0), count: outputSize)
+        self.valueNetwork = Array(repeating: Double(0.0), count: self.outputSize)
+        self.valueNormalized = Array(repeating: Double(0.0), count: self.outputSize)
+        self.dLoss = Array(repeating: Double(0.0), count: self.outputSize)
+        self.dNormalization = Array(repeating: Double(0.0), count: self.outputSize)
         self.normalizationFunction = normalizationFunction
         self.lossFunction = lossFunction
     }
@@ -160,29 +162,108 @@ class NN {
         if labels.count != self.outputSize {
             fatalError("Error: FP. Input labels doesn't match the network")
         }
-        var previousActivations = input
+        var activationsPreviousLayer = input
         for(indexLayer, weightsLayer) in self.weights.enumerated() {
             let countNode = self.activations[indexLayer].count
             for indexNode in 0..<countNode {
                 let weightsNode = weightsLayer[indexNode]
-                let weightedSum = zip(weightsNode, previousActivations).reduce(0.0) { sum, pair in sum + pair.0 * pair.1} + self.biases[indexLayer][indexNode]
+                let weightedSum = zip(weightsNode, activationsPreviousLayer).reduce(0.0) { sum, pair in sum + pair.0 * pair.1} + self.biases[indexLayer][indexNode]
                 self.activations[indexLayer][indexNode] = self.activationFunctions[indexLayer][indexNode].forward(weightedSum)
             }
-            previousActivations = self.activations[indexLayer]
+            activationsPreviousLayer = self.activations[indexLayer]
         }
-        self.outputLayer.valueNetwork = previousActivations
+        self.outputLayer.valueNetwork = activationsPreviousLayer
         for (index, _) in self.outputLayer.valueNetwork.enumerated() {
-            self.outputLayer.valueNormalized[index] = self.outputLayer.normalizationFunction.forward(inputAll: self.outputLayer.valueNetwork, forNode: index)
+            self.outputLayer.valueNormalized[index] = self.outputLayer.normalizationFunction.forward(inputAll: self.outputLayer.valueNetwork, indexNode: index)
         }
         self.lastLoss = self.outputLayer.lossFunction.forward(predictions: self.outputLayer.valueNormalized, labels: labels)
     }
 
-    func bp(input: [Double], labels: [Double]) {
-        
+    func bp() {
+        for index in 0..<self.outputSize {
+            self.outputLayer.dLoss[index] = self.outputLayer.lossFunction.backward(indexNode: index)
+        }
+        self.outputLayer.lossFunction.reset()
+        for index in 0..<self.outputSize {
+            self.outputLayer.dNormalization[index] = self.outputLayer.normalizationFunction.backward(dInputAll: self.outputLayer.dLoss, indexNode: index)
+        }
+        var gradientsPreviousLayer = self.outputLayer.dNormalization
+        for indexLayer in (0..<self.weights.count).reversed() {
+            let countNode = self.activations[indexLayer].count
+            var gradientsCurrentLayer = Array(repeating: Double(0.0), count: countNode)
+            for indexNode in 0..<countNode {
+                let activation = self.activations[indexLayer][indexNode]
+                let gradientActivation = self.activationFunctions[indexLayer][indexNode].backward(activation)
+                self.dBiases[indexLayer][indexNode] = gradientsPreviousLayer[indexNode]
+                for indexToPreviousNode in 0..<self.weights[indexLayer][indexNode].count {
+                    self.dWeights[indexLayer][indexNode][indexToPreviousNode] = gradientsPreviousLayer[indexNode] * self.activations[indexLayer - 1][indexToPreviousNode]
+                }
+                gradientsCurrentLayer[indexNode] = zip(gradientsPreviousLayer, self.weights[indexLayer].map { $0[indexNode] }).reduce(0) { sum, pair in sum + pair.0 * pair.1 } * gradientActivation
+            }
+            gradientsPreviousLayer = gradientsCurrentLayer
+        }
     }
 
-    func descent(input: [Double], labels: [Double]) {
+    func resetGradients() {
+        for indexLayer in 0..<self.dWeights.count {
+            for indexNode in 0..<self.dWeights[indexLayer].count {
+                self.dWeights[indexLayer][indexNode] = Array(repeating: Double(0.0), count: self.dWeights[indexLayer][indexNode].count)
+            }
+            self.dBiases[indexLayer] = Array(repeating: Double(0.0), count: self.dBiases[indexLayer].count)
+        }
+    }
 
+    func updateParameters(withGradients parameters: NNParameter) {
+        for indexLayer in 0..<parameters.weights.count {
+            for indexNode in 0..<parameters.weights[indexLayer].count {
+                for indexToPreviousNode in 0..<parameters.weights[indexLayer][indexNode].count {
+                    self.weights[indexLayer][indexNode][indexToPreviousNode] -= self.trainingConfig.learningRate * parameters.weights[indexLayer][indexNode][indexToPreviousNode]
+                }
+                self.biases[indexLayer][indexNode] -= self.trainingConfig.learningRate * parameters.biases[indexLayer][indexNode]
+            }
+        }
+    }
+
+    func descentbatches(inputs: [[Double]], labels: [[Double]]) {
+        if inputs.count != self.trainingConfig.batchSize || labels.count != self.trainingConfig.batchSize {
+            fatalError("Error: Gradient descent. Input Data doesn't match batch size")
+        }
+        self.dWeightsBatch = []
+        self.dBiasesBatch = []
+        for indexBatch in 0..<self.trainingConfig.batchSize {
+            self.fp(input: inputs[indexBatch], labels: labels[indexBatch])
+            self.bp()
+            self.dWeightsBatch.append(self.dWeights)
+            self.dBiasesBatch.append(self.dBiases)
+            self.resetGradients()
+        }
+        var dParametersBatchesMean = NNParameter(weights: [], biases: [])
+        for indexLayer in 0..<self.dWeights.count {
+            for indexNode in 0..<self.dWeights[indexLayer].count {
+                dParametersBatchesMean.weights[indexLayer][indexNode] = Array(repeating: Double(0.0), count: self.dWeights[indexLayer][indexNode].count)
+            }
+            dParametersBatchesMean.biases[indexLayer] = Array(repeating: Double(0.0), count: self.dBiases[indexLayer].count)
+        }
+        for indexBatch in 0..<self.trainingConfig.batchSize {
+            for indexLayer in 0..<self.dWeightsBatch[indexBatch].count {
+                for indexNode in 0..<self.dWeightsBatch[indexBatch][indexLayer].count {
+                    for indexToPreviousNode in 0..<self.dWeightsBatch[indexBatch][indexLayer][indexNode].count {
+                        dParametersBatchesMean.weights[indexLayer][indexNode][indexToPreviousNode] += self.dWeightsBatch[indexBatch][indexLayer][indexNode][indexToPreviousNode]
+                    }
+                    dParametersBatchesMean.biases[indexLayer][indexNode] += self.dBiasesBatch[indexBatch][indexLayer][indexNode]
+                }
+            }
+        }
+        let batchSizeInDouble = Double(self.trainingConfig.batchSize)
+        for indexLayer in 0..<dParametersBatchesMean.weights.count {
+            for indexNode in 0..<dParametersBatchesMean.weights[indexLayer].count {
+                for indexToPreviousNode in 0..<dParametersBatchesMean.weights[indexLayer][indexNode].count {
+                    dParametersBatchesMean.weights[indexLayer][indexNode][indexToPreviousNode] /= batchSizeInDouble
+                }
+                dParametersBatchesMean.biases[indexLayer][indexNode] /= batchSizeInDouble
+            }
+        }
+        self.updateParameters(withGradients: dParametersBatchesMean)
     }
 
     func getPrediction() -> Int {

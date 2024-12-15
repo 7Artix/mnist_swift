@@ -32,10 +32,21 @@ let network = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
 let testImage1Dim = mnistTraining.getImage(index: 0).0.flatMap{ $0 }.map { Double($0) }
 let testLabel = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-network.fp(input: testImage1Dim, labels: testLabel)
-print(network.outputLayer.valueNetwork)
-print(network.outputLayer.valueNormalized)
-print(network.lastLoss ?? "Call fp first")
+// network.fp(input: testImage1Dim, labels: testLabel)
+// print(network.outputLayer.valueNetwork)
+// print(network.outputLayer.valueNormalized)
+// print(network.lastLoss ?? "Call fp first")
+
+print(mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10),terminator: "\n")
+
+// let startTime = Date()
+// for i in 0..<100 {
+//     print("\rProcessing: \(i + 1)/100", terminator: "")
+//     fflush(stdout) // 刷新标准输出
+//     network.fp(input: testImage1Dim, labels: testLabel)
+// }
+// let endTime = Date()
+// print("\nDone! in \(endTime.timeIntervalSince(startTime))")
 
 // print(network.activations)
 // print(network.activationFunctions)

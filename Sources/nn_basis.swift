@@ -45,12 +45,11 @@ func constantInitializer(_: Int?, _: Int?) -> Double {
 protocol LossFunction {
     //init()
     func forward(predictions: [Double], labels: [Double]) -> Double
-    func backward(index: Int) -> Double
+    func backward(indexNode: Int) -> Double
     func reset()
 }
 // 交叉熵损失函数
 class CrossEntropy: LossFunction {
-    //required init() {}
     var predictions: [Double]?
     var labels: [Double]?
     func forward(predictions: [Double], labels: [Double]) -> Double {
@@ -62,11 +61,11 @@ class CrossEntropy: LossFunction {
         let outputForward = zip(predictions, labels).map { prediction, label in 0.0 - label * log(prediction + 1e-15) }
         return outputForward.reduce(0.0 , +)
     }
-    func backward(index: Int) -> Double {
+    func backward(indexNode: Int) -> Double {
         guard let predictions = self.predictions, let labels = self.labels else {
             fatalError("Error: CrossEntropy. Make sure forward() is called before backward")
         }
-        return 0.0 - (labels[index] / predictions[index])
+        return 0.0 - (labels[indexNode] / predictions[indexNode])
     }
     func reset() {
         self.predictions = nil
@@ -76,14 +75,14 @@ class CrossEntropy: LossFunction {
 
 //MARK: 归一化函数
 protocol NormalizationFunction {
-    func forward(inputAll: [Double], forNode: Int) -> Double
-    func backward(dInputAll: [Double], forNode: Int) -> Double
+    func forward(inputAll: [Double], indexNode: Int) -> Double
+    func backward(dInputAll: [Double], indexNode: Int) -> Double
     func reset()
 }
 //softmax
 class Softmax: NormalizationFunction {
     var outputForward: [Double]?
-    func forward(inputAll: [Double], forNode index: Int) -> Double {
+    func forward(inputAll: [Double], indexNode index: Int) -> Double {
         let maxInput = inputAll.max() ?? 0.0
         //减去最大值, 防止由于指数过大导致溢出, 或指数过小导致精度问题
         let expValues = inputAll.map { exp($0 - maxInput) }
@@ -93,7 +92,7 @@ class Softmax: NormalizationFunction {
         return self.outputForward![index]
     }
     //softmax求导为全梯度
-    func backward(dInputAll: [Double], forNode index: Int) -> Double {
+    func backward(dInputAll: [Double], indexNode index: Int) -> Double {
         guard let outputForward = self.outputForward else {
             fatalError("Error: softmax. Make sure forward() is called before backward()")
         }

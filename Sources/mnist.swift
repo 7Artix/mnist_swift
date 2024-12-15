@@ -25,6 +25,7 @@ class MNIST {
         self.numberOfRows = Int(self.database.imagesData[8..<12].withUnsafeBytes { $0.load(as: UInt32.self).bigEndian })
         self.numberOfCols = Int(self.database.imagesData[12..<16].withUnsafeBytes { $0.load(as: UInt32.self).bigEndian })
     }
+
     func getImage(index: Int) -> ([[UInt8]], Int) {
         var image: [[UInt8]] = []
         for indexRow in 0..<self.numberOfRows {
@@ -35,5 +36,31 @@ class MNIST {
         }
         let label: Int = Int(database.labelsData[index + 8])
         return (image, label)
+    }
+
+    func getImagesBatch(fromIndex index: Int, batchSize: Int) -> ([[[UInt8]]], [Int]) {
+        var images: [[[UInt8]]] = []
+        var labels: [Int] = []
+        for indexBatch in 0..<batchSize {
+            images.append(self.getImage(index: index + indexBatch).0)
+            labels.append(self.getImage(index: index + indexBatch).1)
+        }
+        return (images, labels)
+    }
+
+    func getImagesBatchForNetwork(fromIndex index: Int, batchSize: Int) -> ([[Double]], [[Double]]) {
+        var imagesInOneDimDouble: [[Double]] = []
+        var labelsInOneDimDouble: [[Double]] = []
+        for indexBatch in 0..<batchSize {
+            let image = self.getImage(index: index + indexBatch).0.flatMap { row in
+                row.map { Double($0) / 255.0 }
+            }
+            imagesInOneDimDouble.append(image)
+            let label = self.getImage(index: index + indexBatch).1
+            var oneHotLabel = Array(repeating: Double(0.0), count: 10)
+            oneHotLabel[label] = 1.0
+            labelsInOneDimDouble.append(oneHotLabel)
+        }
+        return (imagesInOneDimDouble, labelsInOneDimDouble)
     }
 }
