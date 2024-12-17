@@ -10,7 +10,7 @@ struct NodeStructure {
 //输出层结构体
 struct OutputLayer {
     var outputSize: Int
-    //输出层(激活值): 神经网络输出的激活值
+    //输出层(激活值): 神经网络输出的未经激活的线性叠加值
     var valueNetwork: [Double]
     //输出层(归一值): 归一化后值
     var valueNormalized: [Double]
@@ -100,6 +100,8 @@ class NN {
     var layerStructure: [Int]
     //权重结构, 存储每个节点的权重数量, 便于初始化
     var weightStructure: [[Int]]
+    //误差梯度, 对各层线性叠加值z
+    var delta: [[Double]]
     //相对权重张量的梯度
     var dWeights: [[[Double]]]
     //相对偏置矩阵的梯度
@@ -139,12 +141,13 @@ class NN {
         //去除输出层到归一化层的无效权重
         self.weightStructure = weightStructure.dropLast()
         //初始化
-        self.biases = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
-        self.zValues = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
+        self.zValues = self.layerStructure.dropFirst().dropLast().map { Array(repeating: Double(0.0), count: $0)}
         self.activations = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
         self.activationFunctions = self.layerStructure.dropFirst().map { Array(repeating: ReLU(), count: $0)}
-        self.dBiases = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
+        self.biases = self.layerStructure.dropFirst().dropLast().map { Array(repeating: Double(0.0), count: $0)}
         self.weights = self.weightStructure.map { node in node.map {Array(repeating: 0.0, count: $0)}}
+        self.delta = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
+        self.dBiases = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
         self.dWeights = self.weightStructure.map { node in node.map {Array(repeating: 0.0, count: $0)}}
         //根据配置初始化权重值, 偏置值与激活函数
         for (indexLayer, layer) in networkConfig.structure.enumerated() {
@@ -179,7 +182,10 @@ class NN {
             }
             activationsPreviousLayer = self.activations[indexLayer]
         }
-        self.outputLayer.valueNetwork = activationsPreviousLayer
+        guard let valueNetwork = zValues.last else {
+            fatalError("Error: FP. Invalid output layer values")
+        }
+        self.outputLayer.valueNetwork = valueNetwork
         for (index, _) in self.outputLayer.valueNetwork.enumerated() {
             self.outputLayer.valueNormalized[index] = self.outputLayer.normalizationFunction.forward(inputAll: self.outputLayer.valueNetwork, indexNode: index)
         }
@@ -317,16 +323,16 @@ class NN {
         return lossValue
     }
 
-    func printParameters() {
-        print("Here's the parameters:")
+    func printParametersByLayer() {
+        print("\nHere's the parameters:")
         for (indexLayer, _) in self.weights.enumerated() {
             print("Layer \(indexLayer + 1)")
             for (indexNode, _) in self.weights[indexLayer].enumerated() {
-                print(String(format: "  Node: %d, bias: %.3f, dBias: %.3f, activation: %.3f", indexNode + 1, self.biases[indexLayer][indexNode], self.dBiases[indexLayer][indexNode], self.activations[indexLayer][indexNode]))
+                print(String(format: "  Node: %d, bias: %.3f, dBias: %.3f, zValue: %.3f, activation: %.3f", indexNode + 1, self.biases[indexLayer][indexNode], self.dBiases[indexLayer][indexNode], self.zValues[indexLayer][indexNode], self.activations[indexLayer][indexNode]))
                 print(String(format: "    Weights: %@    dWeights: %@", self.weights[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: ", "), self.dWeights[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: ", ")))
             }
         }
-        print(String(format: "Output Layer: \n  Predictions: %@", self.outputLayer.valueNormalized.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
+        print(String(format: "Output Layer: \n  valuesNetwork: %@\n  Predictions: %@", self.outputLayer.valueNetwork.map { String(format: "%.3f", $0) }.joined(separator: ", "), self.outputLayer.valueNormalized.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
         print(String(format: "  dLoss:         %@", self.outputLayer.dLoss.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
         print(String(format: "  dNormalizaton: %@", self.outputLayer.dNormalization.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
     }
