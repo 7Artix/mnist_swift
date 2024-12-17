@@ -109,8 +109,8 @@ network2.weights[2][1][1] = 0.8
 network2.weights[2][1][2] = -0.9
 network2.fp(input: inputData, labels: label)
 network2.printParametersByLayer()
-print(network2.biases)
-print(network2.zValues)
+print(network2.weightStructure)
+print(network2.layerStructure)
 network2.bp()
 network2.printParametersByLayer()
 

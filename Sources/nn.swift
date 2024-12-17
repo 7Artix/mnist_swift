@@ -127,9 +127,7 @@ class NN {
         self.layerStructure = networkConfig.structure.map {$0.count}
         //层结构加入输入层数量, 但并无实际节点, 仅便于后续建立连接赋权重
         self.layerStructure.insert(networkConfig.inputSize, at: 0)
-        //层结构加入输出层数量, 实际节点由outputLayer, 仅便于后续建立连接赋权重
-        self.layerStructure.append(outputSize)
-        //layerStructure结构: [input层节点数量, 隐含层1节点数量, ... , 隐含层n节点数量, output层节点数量]
+        //layerStructure结构: [input层节点数量 : 隐含层1节点数量 : ... : 隐含层n节点数量 : output层节点数量]
 
         //建立权重结构, 多加入了从输出层到归一化层的无效权重
         self.weightStructure = []
@@ -138,13 +136,11 @@ class NN {
             let nextLayerNodeCount = self.layerStructure[index + 1]
             self.weightStructure.append(Array(repeating: nodeCount, count: nextLayerNodeCount))
         }
-        //去除输出层到归一化层的无效权重
-        self.weightStructure = weightStructure.dropLast()
         //初始化
-        self.zValues = self.layerStructure.dropFirst().dropLast().map { Array(repeating: Double(0.0), count: $0)}
+        self.zValues = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
         self.activations = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
         self.activationFunctions = self.layerStructure.dropFirst().map { Array(repeating: ReLU(), count: $0)}
-        self.biases = self.layerStructure.dropFirst().dropLast().map { Array(repeating: Double(0.0), count: $0)}
+        self.biases = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
         self.weights = self.weightStructure.map { node in node.map {Array(repeating: 0.0, count: $0)}}
         self.delta = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
         self.dBiases = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
@@ -152,7 +148,7 @@ class NN {
         //根据配置初始化权重值, 偏置值与激活函数
         for (indexLayer, layer) in networkConfig.structure.enumerated() {
             let inputNodeCount = layerStructure[indexLayer]
-            let outputNodeCount = layerStructure[indexLayer + 2]
+            let outputNodeCount = indexLayer + 2 < layerStructure.count ? layerStructure[indexLayer + 2] : layerStructure[indexLayer + 1]
             for (indexNode, node) in layer.enumerated() {
                 biases[indexLayer][indexNode] = node.bias
                 activationFunctions[indexLayer][indexNode] = node.activationFunction
