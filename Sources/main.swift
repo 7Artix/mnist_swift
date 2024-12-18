@@ -109,11 +109,19 @@ network2.weights[2][1][1] = 0.8
 network2.weights[2][1][2] = -0.9
 network2.fp(input: inputData, labels: label)
 network2.printParametersByLayer()
-print(network2.weightStructure)
-print(network2.layerStructure)
+print(String(format: "Loss: %.4f", network2.getLoss()))
 network2.bp()
+let dParameter = NN.NNParameter(weights: network2.dW, biases: network2.dB)
+network2.updateParameters(withGradients: dParameter)
+network2.fp(input: inputData, labels: label)
 network2.printParametersByLayer()
-
+print(String(format: "Loss: %.4f", network2.getLoss()))
+for i in 0..<8 {
+    let dParameter = NN.NNParameter(weights: network2.dW, biases: network2.dB)
+    network2.updateParameters(withGradients: dParameter)
+    network2.fp(input: inputData, labels: label)
+    print(String(format: "BP Times: %d, Loss: %.4f", (i+2), network2.getLoss()))
+}
 
 
 // let testImage1Dim = mnistTraining.getImage(index: 0).0.flatMap{ $0 }.map { Double($0) }
