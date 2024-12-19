@@ -43,32 +43,6 @@ let mnistTest = MNIST(database: testData)
 let inputData = [1.0, 2.0, 3.0, 4.0]
 let label = [1.0, 0.0]
 
-// var networkStructure: [[NodeStructure]] = []
-// networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 3))
-// networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 3))
-// networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 2))
-// var outputlayer = OutputLayer(outputSize: 2, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
-// var networkConfig = NNConfig(inputSize: 4, structure: networkStructure, outputLayer: outputlayer)
-// var trainingConfig = TrainingConfig(batchSize: 1, learningRate: 0.01, negativeAttempts: 5)
-// let network = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
-// for i in 0...3 {
-//     network.weights[0][0][i] = Double(i+1) * 0.1
-//     network.weights[0][1][i] = Double(i+1) * 0.1 + 0.4
-//     network.weights[0][2][i] = Double(i+1) * 0.1 + 0.8
-// }
-// for i in 0...2 {
-//     network.weights[1][0][i] = Double(i+1) * 0.1
-//     network.weights[1][1][i] = Double(i+1) * 0.1 + 0.3
-//     network.weights[1][2][i] = Double(i+1) * 0.1 + 0.6
-
-//     network.weights[2][0][i] = Double(i+1) * 0.1
-//     network.weights[2][1][i] = Double(i+1) * 0.1 + 0.3
-// }
-// network.fp(input: inputData, labels: label)
-// network.printParameters()
-// network.bp()
-// network.printParameters()
-
 
 var networkStructure: [[NodeStructure]] = []
 networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 3))
@@ -76,37 +50,8 @@ networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(
 networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 2))
 var outputlayer = OutputLayer(outputSize: 2, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
 var networkConfig = NNConfig(inputSize: 4, structure: networkStructure, outputLayer: outputlayer)
-var trainingConfig = TrainingConfig(batchSize: 1, learningRate: 0.01, negativeAttempts: 5)
+var trainingConfig = TrainingConfig(batchSize: 1, learningRate: 0.05, negativeAttempts: 5)
 let network2 = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
-network2.weights[0][0][0] = 0.2
-network2.weights[0][0][1] = -0.3
-network2.weights[0][0][2] = 0.5
-network2.weights[0][0][3] = 0.1
-network2.weights[0][1][0] = -0.4
-network2.weights[0][1][1] = 0.6
-network2.weights[0][1][2] = -0.1
-network2.weights[0][1][3] = 0.2
-network2.weights[0][2][0] = 0.3
-network2.weights[0][2][1] = -0.2
-network2.weights[0][2][2] = 0.4
-network2.weights[0][2][3] = -0.5
-
-network2.weights[1][0][0] = 0.5
-network2.weights[1][0][1] = -0.4
-network2.weights[1][0][2] = 0.3
-network2.weights[1][1][0] = -0.3
-network2.weights[1][1][1] = 0.7
-network2.weights[1][1][2] = -0.2
-network2.weights[1][2][0] = 0.6
-network2.weights[1][2][1] = -0.1
-network2.weights[1][2][2] = 0.4
-
-network2.weights[2][0][0] = 0.4
-network2.weights[2][0][1] = -0.5
-network2.weights[2][0][2] = 0.6
-network2.weights[2][1][0] = -0.7
-network2.weights[2][1][1] = 0.8
-network2.weights[2][1][2] = -0.9
 network2.fp(input: inputData, labels: label)
 network2.printParametersByLayer()
 print(String(format: "Loss: %.4f", network2.getLoss()))
@@ -116,7 +61,7 @@ network2.updateParameters(withGradients: dParameter)
 network2.fp(input: inputData, labels: label)
 network2.printParametersByLayer()
 print(String(format: "Loss: %.4f", network2.getLoss()))
-for i in 0..<8 {
+for i in 0..<100 {
     let dParameter = NN.NNParameter(weights: network2.dW, biases: network2.dB)
     network2.updateParameters(withGradients: dParameter)
     network2.fp(input: inputData, labels: label)
