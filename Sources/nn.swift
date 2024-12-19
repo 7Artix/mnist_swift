@@ -109,6 +109,8 @@ class NN {
     //batch多样本梯度存储
     var dWeightsBatch: [[[[Double]]]] = []
     var dBiasesBatch: [[[Double]]] = []
+    //Batch平均梯度
+    var dParametersMean: NN.NNParameter?
     //历史最佳参数
     var historyBest: NNParameter?
     //上次前向传播的预测结果
@@ -117,6 +119,10 @@ class NN {
     var lossLast: Double?
     //上次输入值
     var inputLast: [Double]?
+    //上次标签
+    var labelsLast: [Double]?
+    //标签含义
+    var labelsMeaning: [String]?
 
     init(networkConfig: NNConfig, trainingConfig: TrainingConfig){
         self.trainingConfig = trainingConfig
@@ -166,6 +172,7 @@ class NN {
         if labels.count != self.outputSize {
             fatalError("Error: FP. Input labels doesn't match the network")
         }
+        self.labelsLast = labels
         self.inputLast = input
         var activationsPreviousLayer = input
         for(indexLayer, weightsLayer) in self.weights.enumerated() {
@@ -252,6 +259,11 @@ class NN {
         }
     }
 
+    func descentSingleStep() {
+        let dParameters = NN.NNParameter(weights: self.dW, biases: self.dB)
+        updateParameters(withGradients: dParameters)
+    }
+
     func descentbatches(inputs: [[Double]], labels: [[Double]]) {
         if inputs.count != self.trainingConfig.batchSize || labels.count != self.trainingConfig.batchSize {
             fatalError("Error: Gradient descent. Input Data doesn't match batch size")
@@ -302,38 +314,97 @@ class NN {
         self.updateParameters(withGradients: dParametersBatchesMean)
     }
 
-    func getPrediction() -> Int {
-        guard let predictionValue = self.predictionLast else {
-            print("Haven't propagate yet")
-            return -1
+    func setLabelsMeaning(use meanings: [String]) {
+        if meanings.count != self.outputSize {
+            fatalError("Error: Set labels' meaning. Invalid meanings")
         }
-        return predictionValue
+        self.labelsMeaning = meanings
+    }
+
+    func getPredictionIndex() -> Int {
+        let index: Int = self.outputLayer.valueNormalized.firstIndex(of: self.outputLayer.valueNormalized.max() ?? 0) ?? -1
+        return index
+    }
+
+    func getPredictionMeaning() -> String {
+        let predictionIndex = self.getPredictionIndex()
+        guard let labelsMeaning = self.labelsMeaning else {
+            print("Error: Get prediction meaning. Set the meanings for the labels first")
+            return "Label index: \(predictionIndex)"
+        }
+        if predictionIndex == -1 {
+            print("Error: Get prediction meaning. Prediction is empty")
+            return "No Prediction"
+        }
+        return labelsMeaning[predictionIndex]
     }
 
     func getLoss() -> Double {
         guard let lossValue = self.lossLast else {
             print("Haven't propagate yet")
-            return -1
+            return -1.0
         }
         return lossValue
     }
 
-    func printParameters() {
-
+    func getLabelsLast() -> [Double] {
+        guard let labelsLast = self.labelsLast else {
+            print("Error: Print Parameters. Invalid last labels")
+            return []
+        }
+        return labelsLast
     }
 
-    func printParametersByLayer() {
-        print("\nHere's the parameters:")
+    func getProbability() -> Double {
+        return self.outputLayer.valueNormalized[self.getPredictionIndex()] / 1.0
+    }
+
+    func printResults() {
+        print(String(format: "Results: \(self.getPredictionMeaning()) (%.2f%%)", self.getProbability() * 100.0))
+    }
+
+    func printResultsInDetail() {
+        print(String(format: "Results: \n  Predictions:\t%@", self.outputLayer.valueNormalized.map { String(format: "%.4f", $0) }.joined(separator: "\t")))
+        print(String(format: "  Labels     :\t%@", self.getLabelsLast().map { String(format: "%.4f", $0) }.joined(separator: "\t")))
+        print(String(format: "  Loss: %.4f", self.getLoss()))
+    }
+
+    func printParametersInDetail() {
+        print("\nParameters:")
+        print(String(format: "  Batch Size: %d    Learning Rate: %.4f", self.trainingConfig.batchSize, self.trainingConfig.learningRate))
+        print("  Layer Structure: \(self.layerStructure)")
+        var dParameters: NN.NNParameter
+        if self.dParametersMean != nil {
+            dParameters = self.dParametersMean!
+        } else {
+            dParameters = NN.NNParameter(weights: self.dW, biases: self.dB)
+        }
+        for indexLayer in 0..<self.layerStructure.count-1 {
+            print("  Layer\(indexLayer+1):")
+            print(String(format: "    Biases:\n\t%@", self.biases[indexLayer].map { String(format: "%+.4f", $0)}.joined(separator: "\t")))
+            print("    Weights:")
+            for indexNode in 0..<self.layerStructure[indexLayer+1] {
+                print(String(format: "\t%@", self.weights[indexLayer][indexNode].map { String(format: "%+.4f", $0)}.joined(separator: "\t")))
+            }
+            print(String(format: "    dBiases:\n\t%@", dParameters.biases[indexLayer].map { String(format: "%+.4f", $0)}.joined(separator: "\t")))
+            print("    dWeights:")
+            for indexNode in 0..<self.layerStructure[indexLayer+1] {
+                print(String(format: "\t%@", dParameters.weights[indexLayer][indexNode].map { String(format: "%+.4f", $0)}.joined(separator: "\t")))
+            }
+        }
+        self.printResultsInDetail()
+    }
+
+    func printParametersByLayerInDetail() {
+        print("\nParameters:")
         for (indexLayer, _) in self.weights.enumerated() {
             print("Layer \(indexLayer + 1)")
             for (indexNode, _) in self.weights[indexLayer].enumerated() {
-                print(String(format: "  Node: %d, bias: %.3f, dBias: %.3f, zValue: %.3f, activation: %.3f", indexNode + 1, self.biases[indexLayer][indexNode], self.dB[indexLayer][indexNode], self.zs[indexLayer][indexNode], self.activations[indexLayer][indexNode]))
-                print(String(format: "    Weights: %@    dWeights: %@", self.weights[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: ", "), self.dW[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: ", ")))
+                print(String(format: "  Node%d:\n    bias: %.3f\tdBias: %.3f\tzValue: %.3f\tactivation: %.3f", indexNode + 1, self.biases[indexLayer][indexNode], self.dB[indexLayer][indexNode], self.zs[indexLayer][indexNode], self.activations[indexLayer][indexNode]))
+                print(String(format: "    Weights: %@\tdWeights: %@", self.weights[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: "\t"), self.dW[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: "\t")))
             }
         }
-        print(String(format: "Output Layer: \n  valuesNetwork: %@\n  Predictions: %@", self.outputLayer.valueNetwork.map { String(format: "%.3f", $0) }.joined(separator: ", "), self.outputLayer.valueNormalized.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
-        print(String(format: "  dLoss:         %@", self.outputLayer.dLoss.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
-        print(String(format: "  dNormalizaton: %@", self.outputLayer.dNormalization.map { String(format: "%.3f", $0) }.joined(separator: ", ")))
+        self.printResultsInDetail()
     }
 
     //保存最佳参数

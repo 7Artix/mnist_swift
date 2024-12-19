@@ -45,51 +45,21 @@ let label = [1.0, 0.0]
 
 
 var networkStructure: [[NodeStructure]] = []
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 3))
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 3))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 4))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 5))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 6))
 networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 2))
 var outputlayer = OutputLayer(outputSize: 2, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
 var networkConfig = NNConfig(inputSize: 4, structure: networkStructure, outputLayer: outputlayer)
-var trainingConfig = TrainingConfig(batchSize: 1, learningRate: 0.05, negativeAttempts: 5)
+var trainingConfig = TrainingConfig(batchSize: 10, learningRate: 0.05, negativeAttempts: 5)
 let network2 = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
 network2.fp(input: inputData, labels: label)
-network2.printParametersByLayer()
-print(String(format: "Loss: %.4f", network2.getLoss()))
+network2.printResults()
 network2.bp()
-let dParameter = NN.NNParameter(weights: network2.dW, biases: network2.dB)
-network2.updateParameters(withGradients: dParameter)
+network2.descentSingleStep()
+network2.printParametersInDetail()
 network2.fp(input: inputData, labels: label)
-network2.printParametersByLayer()
-print(String(format: "Loss: %.4f", network2.getLoss()))
-for i in 0..<100 {
-    let dParameter = NN.NNParameter(weights: network2.dW, biases: network2.dB)
-    network2.updateParameters(withGradients: dParameter)
-    network2.fp(input: inputData, labels: label)
-    print(String(format: "BP Times: %d, Loss: %.4f", (i+2), network2.getLoss()))
-}
-
-
-// let testImage1Dim = mnistTraining.getImage(index: 0).0.flatMap{ $0 }.map { Double($0) }
-// let testLabel = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-// let testImagesBatch = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10).0
-// let testLabelsBatch = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 10).1
-// network.descentbatches(inputs: testImagesBatch, labels: testLabelsBatch)
-
-// network.fp(input: testImage1Dim, labels: testLabel)
-// print(network.outputLayer.valueNetwork)
-// print(network.outputLayer.valueNormalized)
-// print(network.lastLoss ?? "Call fp first")
-
-// let checkImage = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 1).0[0]
-// let checkLabel = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 1).1[0]
-
-// print("weights: \(network.weights[4][0])")
-// print("gradients: \(network.dWeightsBatch)")
-// network.descentbatches(inputs: testImagesBatch, labels: testLabelsBatch)
-// network.fp(input: checkImage, labels: checkLabel)
-// print(network.getLoss())
-// print("weights: \(network.weights[4][0])")
-// print("gradients: \(network.dWeightsBatch[0][4][0])")
+network2.printResults()
 
 // let startTime = Date()
 // for i in 0..<100 {
@@ -100,11 +70,3 @@ for i in 0..<100 {
 // let endTime = Date()
 // print("\nDone! in \(endTime.timeIntervalSince(startTime))")
 
-// print(network.activations)
-// print(network.activationFunctions)
-// print(network.biases)
-// print(network.dBiases)
-// print(network.dBiasesBatch)
-// print(network.weights)
-// print(network.dWeights)
-// print(network.dWeightsBatch)
