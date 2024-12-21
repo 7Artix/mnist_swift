@@ -20,46 +20,61 @@ let mnistTest = MNIST(database: testData)
 //     try cgImageGray8.saveCGImage(useName: "first_image_label_\(firstLabel)", toPath: "./test", as: .png)
 // }
 
-// var networkStructure: [[NodeStructure]] = []
-// networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 4))
-// networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 3))
-// networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 2))
-// var outputlayer = OutputLayer(outputSize: 2, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
-// var networkConfig = NNConfig(inputSize: 5, structure: networkStructure, outputLayer: outputlayer)
-// var trainingConfig = TrainingConfig(batchSize: 1, learningRate: 0.005, negativeAttempts: 5)
-// let network = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
-// print("Layers structure\(network.layerStructure)")
-// print("Weights structure: \(network.weightStructure)")
-// network.printParameters()
-// network.fp(input: [1.0, 1.0, 2.0, 3.0, 5.0], labels: [1.0, 0.0])
-// print("\nAfter FP:")
-// network.printParameters()
-// network.bp()
-// var oneStepParameter: NN.NNParameter = NN.NNParameter(weights: network.dWeights, biases: network.dBiases)
-// network.updateParameters(withGradients: oneStepParameter)
-// print("\nAfter Descent:")
-// network.printParameters()
+let trainingImages = mnistTraining.getImagesBatchForNetwork(fromIndex: 0, batchSize: 20)
+let testImages = mnistTest.getImagesBatchForNetwork(fromIndex: 0, batchSize: 20)
 
-let inputData = [1.0, 2.0, 3.0, 4.0]
-let label = [1.0, 0.0]
+let trainingImage0 = trainingImages.0[0]
+let trainingLabel0 = trainingImages.1[0]
+let trainingImage1 = trainingImages.0[1]
+let trainingLabel1 = trainingImages.1[1]
+let trainingImage2 = trainingImages.0[2]
+let trainingLabel2 = trainingImages.1[2]
+let trainingImage3 = trainingImages.0[3]
+let trainingLabel3 = trainingImages.1[3]
 
+let labelsMeaning = ["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine"]
 
 var networkStructure: [[NodeStructure]] = []
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 4))
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 5))
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 6))
-networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 2))
-var outputlayer = OutputLayer(outputSize: 2, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
-var networkConfig = NNConfig(inputSize: 4, structure: networkStructure, outputLayer: outputlayer)
-var trainingConfig = TrainingConfig(batchSize: 10, learningRate: 0.05, negativeAttempts: 5)
-let network2 = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
-network2.fp(input: inputData, labels: label)
-network2.printResults()
-network2.bp()
-network2.descentSingleStep()
-network2.printParametersInDetail()
-network2.fp(input: inputData, labels: label)
-network2.printResults()
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: Sigmoid(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 256))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: Sigmoid(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 128))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 64))
+networkStructure.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.1), count: 10))
+var outputlayer = OutputLayer(outputSize: 10, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
+var networkConfig = NNConfig(inputSize: 784, structure: networkStructure, outputLayer: outputlayer)
+var trainingConfig = TrainingConfig(batchSize: 20, learningRate: 0.04, negativeAttempts: 5)
+let network = NN(networkConfig: networkConfig, trainingConfig: trainingConfig)
+network.setLabelsMeaning(use: labelsMeaning)
+
+network.fp(input: trainingImage0, labels: trainingLabel0)
+network.printResultsInDetail()
+
+let startTime = Date()
+for i in 0..<100 {
+    print("processing batch: \(i + 1)/100")
+    network.descentbatches(inputs: trainingImages.0, labels: trainingImages.1)
+    network.fp(input: trainingImage0, labels: trainingLabel0)
+    network.printResultsInDetail()
+    network.fp(input: trainingImage1, labels: trainingLabel1)
+    network.printResultsInDetail()
+    network.fp(input: trainingImage2, labels: trainingLabel2)
+    network.printResultsInDetail()
+    network.fp(input: trainingImage3, labels: trainingLabel3)
+    network.printResultsInDetail()
+}
+let endTime = Date()
+print("Done! in \(endTime.timeIntervalSince(startTime))")
+
+network.fp(input: trainingImage0, labels: trainingLabel0)
+network.printResultsInDetail()
+
+// network.fp(input: testImages.0[0], labels: testImages.1[0])
+// network.printResults()
+// let startTime = Date()
+// network.descentbatches(inputs: trainingImages.0, labels: trainingImages.1)
+// network.fp(input: testImages.0[0], labels: testImages.1[0])
+// network.printResults()
+// let endTime = Date()
+// print("Done! in \(endTime.timeIntervalSince(startTime))")
 
 // let startTime = Date()
 // for i in 0..<100 {

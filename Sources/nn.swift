@@ -64,6 +64,8 @@ struct TrainingConfig {
     var learningRate: Double
     //损失函数始终持续低于历史最佳时, 最多尝试次数
     var negativeAttempts: Int
+    //梯度裁剪阈值
+    var gradientThreshold: Double? = nil
 
     init(batchSize: Int, learningRate: Double, negativeAttempts: Int) {
         self.batchSize = batchSize
@@ -260,6 +262,7 @@ class NN {
     }
 
     func descentSingleStep() {
+        self.bp()
         let dParameters = NN.NNParameter(weights: self.dW, biases: self.dB)
         updateParameters(withGradients: dParameters)
     }
@@ -268,11 +271,13 @@ class NN {
         if inputs.count != self.trainingConfig.batchSize || labels.count != self.trainingConfig.batchSize {
             fatalError("Error: Gradient descent. Input Data doesn't match batch size")
         }
+        let batchSizeInDouble = Double(self.trainingConfig.batchSize)
         self.dWeightsBatch = []
         self.dBiasesBatch = []
         for indexBatch in 0..<self.trainingConfig.batchSize {
+            print(String(format: "\rTraining... Batch Progress: %.1f%%", (Double(indexBatch+1) / Double(self.trainingConfig.batchSize) * 100.0)), terminator: "")
+            fflush(stdout)
             self.fp(input: inputs[indexBatch], labels: labels[indexBatch])
-            print("Loss: \(self.getLoss())")
             self.bp()
             self.dWeightsBatch.append(self.dW)
             self.dBiasesBatch.append(self.dB)
@@ -286,6 +291,7 @@ class NN {
                 Array(repeating: Double(0.0), count: layer.count)
             }
         )
+        print("\nUpdating Parameters...")
         for indexLayer in 0..<self.dW.count {
             for indexNode in 0..<self.dW[indexLayer].count {
                 dParametersBatchesMean.weights[indexLayer][indexNode] = Array(repeating: Double(0.0), count: self.dW[indexLayer][indexNode].count)
@@ -295,23 +301,29 @@ class NN {
         for indexBatch in 0..<self.trainingConfig.batchSize {
             for indexLayer in 0..<self.dWeightsBatch[indexBatch].count {
                 for indexNode in 0..<self.dWeightsBatch[indexBatch][indexLayer].count {
-                    for indexToPreviousNode in 0..<self.dWeightsBatch[indexBatch][indexLayer][indexNode].count {
-                        dParametersBatchesMean.weights[indexLayer][indexNode][indexToPreviousNode] += self.dWeightsBatch[indexBatch][indexLayer][indexNode][indexToPreviousNode]
+                    for indexWeight in 0..<self.dWeightsBatch[indexBatch][indexLayer][indexNode].count {
+                        dParametersBatchesMean.weights[indexLayer][indexNode][indexWeight] += self.dWeightsBatch[indexBatch][indexLayer][indexNode][indexWeight]
                     }
                     dParametersBatchesMean.biases[indexLayer][indexNode] += self.dBiasesBatch[indexBatch][indexLayer][indexNode]
                 }
             }
         }
-        let batchSizeInDouble = Double(self.trainingConfig.batchSize)
         for indexLayer in 0..<dParametersBatchesMean.weights.count {
             for indexNode in 0..<dParametersBatchesMean.weights[indexLayer].count {
-                for indexToPreviousNode in 0..<dParametersBatchesMean.weights[indexLayer][indexNode].count {
-                    dParametersBatchesMean.weights[indexLayer][indexNode][indexToPreviousNode] /= batchSizeInDouble
+                for indexWeight in 0..<dParametersBatchesMean.weights[indexLayer][indexNode].count {
+                    dParametersBatchesMean.weights[indexLayer][indexNode][indexWeight] /= batchSizeInDouble
                 }
                 dParametersBatchesMean.biases[indexLayer][indexNode] /= batchSizeInDouble
             }
         }
         self.updateParameters(withGradients: dParametersBatchesMean)
+        print("Done!")
+    }
+
+    //func gradientsClip
+
+    func setGradientThreshold(threshold: Double) {
+        self.trainingConfig.gradientThreshold = threshold
     }
 
     func setLabelsMeaning(use meanings: [String]) {
@@ -326,14 +338,33 @@ class NN {
         return index
     }
 
+    func getLabelIndex() -> Int {
+        let labels = self.getLabelsLast()
+        let index: Int = labels.firstIndex(of: labels.max() ?? 1) ?? -1
+        return index
+    }
+
+    func getLabelMeaning() -> String {
+        let labelIndex = self.getLabelIndex()
+        guard let labelsMeaning = self.labelsMeaning else {
+            print("Attention! Set the meanings for the labels first")
+            return "Label index: \(labelIndex)"
+        }
+        if labelIndex == -1 {
+            print("Attention! Labels is empty")
+            return "No Labels"
+        }
+        return labelsMeaning[labelIndex]
+    }
+
     func getPredictionMeaning() -> String {
         let predictionIndex = self.getPredictionIndex()
         guard let labelsMeaning = self.labelsMeaning else {
-            print("Error: Get prediction meaning. Set the meanings for the labels first")
+            print("Attention! Set the meanings for the labels first")
             return "Label index: \(predictionIndex)"
         }
         if predictionIndex == -1 {
-            print("Error: Get prediction meaning. Prediction is empty")
+            print("Attention! Prediction is empty")
             return "No Prediction"
         }
         return labelsMeaning[predictionIndex]
@@ -341,7 +372,7 @@ class NN {
 
     func getLoss() -> Double {
         guard let lossValue = self.lossLast else {
-            print("Haven't propagate yet")
+            print("Attention! Haven't propagate yet")
             return -1.0
         }
         return lossValue
@@ -349,7 +380,7 @@ class NN {
 
     func getLabelsLast() -> [Double] {
         guard let labelsLast = self.labelsLast else {
-            print("Error: Print Parameters. Invalid last labels")
+            print("Attention! Invalid last labels")
             return []
         }
         return labelsLast
@@ -359,12 +390,24 @@ class NN {
         return self.outputLayer.valueNormalized[self.getPredictionIndex()] / 1.0
     }
 
+    func getAnswerCheck() -> Bool {
+        if self.getPredictionIndex() == self.getLabelIndex() {
+            return true
+        } else {
+            return false
+        }
+    }
+
     func printResults() {
-        print(String(format: "Results: \(self.getPredictionMeaning()) (%.2f%%)", self.getProbability() * 100.0))
+        let isAnswerCorrect = self.getAnswerCheck() ? "Right" : "Wrong"
+        print("Results:")
+        print(String(format: "  Prediction: \(self.getPredictionMeaning()) (%.2f%%)", self.getProbability() * 100.0))
+        print("  Answer:     \(self.getLabelMeaning()), \(isAnswerCorrect)")
     }
 
     func printResultsInDetail() {
-        print(String(format: "Results: \n  Predictions:\t%@", self.outputLayer.valueNormalized.map { String(format: "%.4f", $0) }.joined(separator: "\t")))
+        self.printResults()
+        print(String(format: "  Predictions:\t%@", self.outputLayer.valueNormalized.map { String(format: "%.4f", $0) }.joined(separator: "\t")))
         print(String(format: "  Labels     :\t%@", self.getLabelsLast().map { String(format: "%.4f", $0) }.joined(separator: "\t")))
         print(String(format: "  Loss: %.4f", self.getLoss()))
     }
@@ -400,8 +443,8 @@ class NN {
         for (indexLayer, _) in self.weights.enumerated() {
             print("Layer \(indexLayer + 1)")
             for (indexNode, _) in self.weights[indexLayer].enumerated() {
-                print(String(format: "  Node%d:\n    bias: %.3f\tdBias: %.3f\tzValue: %.3f\tactivation: %.3f", indexNode + 1, self.biases[indexLayer][indexNode], self.dB[indexLayer][indexNode], self.zs[indexLayer][indexNode], self.activations[indexLayer][indexNode]))
-                print(String(format: "    Weights: %@\tdWeights: %@", self.weights[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: "\t"), self.dW[indexLayer][indexNode].map { String(format: "%.3f", $0)}.joined(separator: "\t")))
+                print(String(format: "  Node%d:\n    bias: %+.4f  dBias: %+.4f  zValue: %.3f  activation: %+.4f", indexNode + 1, self.biases[indexLayer][indexNode], self.dB[indexLayer][indexNode], self.zs[indexLayer][indexNode], self.activations[indexLayer][indexNode]))
+                print(String(format: "    Weights:\t%@\n    dWeights:\t%@", self.weights[indexLayer][indexNode].map { String(format: "%+.4f", $0)}.joined(separator: "\t"), self.dW[indexLayer][indexNode].map { String(format: "%+.4f", $0)}.joined(separator: "\t")))
             }
         }
         self.printResultsInDetail()
