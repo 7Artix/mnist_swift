@@ -1,6 +1,43 @@
 import Foundation
 
-class CNN: NN {
+enum PollingMethod {
+    case max
+    case average
+    case l2
+}
+
+struct CNNLayer {
+    var filter: [[Double]]
+    var poolingMethod: PollingMethod
+    var poolingHeight: Int
+    var poolingWidth: Int
+}
+
+class CNNModule {
+    var layersCNN: [CNNLayer]
+    var heightImageInputCNN: Int
+    var widthImageInputCNN: Int
+    var outputSizeCNN: Int
+
+    init<T: BinaryInteger & FixedWidthInteger>(imageSample: [[T]], layersCNN: [CNNLayer]) {
+        self.layersCNN = layersCNN
+        self.heightImageInputCNN = imageSample.count
+        self.widthImageInputCNN = imageSample.first?.count ?? 0
+        self.outputSizeCNN = 0
+        self.outputSizeCNN = self.fpCNN(image: imageSample, layersCNN: layersCNN).count
+    }
+
+    func fpCNN<T: BinaryInteger & FixedWidthInteger>(image: [[T]], layersCNN: [CNNLayer]) -> [Double] {
+        var imageOutput = image
+        for layer in layersCNN {
+            imageOutput = convolution(imageOutput, with: layer.filter)
+            imageOutput = pooling(imageOutput, with: layer.poolingMethod, windowHeight: layer.poolingHeight, windowWidth: layer.poolingWidth)
+        }
+        return imageOutput.flatMap { row in
+            row.map { Double($0) }
+        }
+    }
+
     private func normalization2Dim<T_origin: BinaryInteger,T: BinaryInteger & FixedWidthInteger>(_ origin: [[T_origin]]) -> [[T]] {
         let height = origin.count
         let width = origin.first?.count ?? 0
@@ -20,7 +57,7 @@ class CNN: NN {
     }
     
     //MARK: 卷积函数
-    private func convolution<T: BinaryInteger & FixedWidthInteger>(_ image: [[T]], with filter: [[Int]]) -> [[T]]{
+    private func convolution<T: BinaryInteger & FixedWidthInteger>(_ image: [[T]], with filter: [[Double]]) -> [[T]]{
         let filterHeight = filter.count
         let filterWidth = filter.first?.count ?? 0
         let peddingNumberWidth = Int(floor(Double(filterWidth) / 2 + 0.1))
@@ -98,11 +135,6 @@ class CNN: NN {
         outputImage = normalization2Dim(outputImageInt64)
         return outputImage
     }
-    enum PollingMethod {
-        case max
-        case average
-        case l2
-    }
 
     //MARK: 池化函数:修剪与池化窗口倍数不匹配的像素
     private func pooling<T: BinaryInteger & FixedWidthInteger>(_ image: [[T]], with method: PollingMethod, windowHeight heightWindow: Int, windowWidth widthWindow: Int) -> [[T]] {
@@ -139,5 +171,14 @@ class CNN: NN {
                 result = values.max() ?? T(0)
         }
         return result
+    }
+}
+
+class CNN: NN {
+    let moduleCNN: CNNModule
+    init(networkConfig: NNConfig, trainingConfig: TrainingConfig, moduleCNN: CNNModule) {
+        self.moduleCNN = moduleCNN
+        let networkConfigCNN = NNConfig(inputSize: moduleCNN.outputSizeCNN, structure: networkConfig.structure, outputLayer: networkConfig.outputLayer)
+        super.init(networkConfig: networkConfigCNN, trainingConfig: trainingConfig)
     }
 }

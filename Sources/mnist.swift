@@ -26,7 +26,7 @@ class MNIST {
         self.numberOfCols = Int(self.database.imagesData[12..<16].withUnsafeBytes { $0.load(as: UInt32.self).bigEndian })
     }
 
-    func getImage(index: Int) -> ([[UInt8]], Int) {
+    func getImage(index: Int) -> (image: [[UInt8]], labelIndex: Int) {
         var image: [[UInt8]] = []
         for indexRow in 0..<self.numberOfRows {
             let indexRowStart = indexRow * self.numberOfCols + 16 + (index * self.numberOfRows * self.numberOfCols)
@@ -38,7 +38,7 @@ class MNIST {
         return (image, label)
     }
 
-    func getImagesBatch(fromIndex index: Int, batchSize: Int) -> ([[[UInt8]]], [Int]) {
+    func getImagesBatch(fromIndex index: Int, batchSize: Int) -> (images: [[[UInt8]]], labelsIndex: [Int]) {
         var images: [[[UInt8]]] = []
         var labels: [Int] = []
         for indexBatch in 0..<batchSize {
@@ -48,7 +48,7 @@ class MNIST {
         return (images, labels)
     }
 
-    func getImagesBatchForNetwork(fromIndex index: Int, batchSize: Int) -> ([[Double]], [[Double]]) {
+    func getImagesBatchForNetwork(fromIndex index: Int, batchSize: Int) -> (images: [[Double]], labels: [[Double]]) {
         var imagesInOneDimDouble: [[Double]] = []
         var labelsInOneDimDouble: [[Double]] = []
         for indexBatch in 0..<batchSize {

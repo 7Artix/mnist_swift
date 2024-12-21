@@ -60,16 +60,21 @@ struct NNConfig {
 struct TrainingConfig {
     //单个batch的样本数量
     var batchSize: Int
+    //单次epoch的batch数量
+    var epochSize: Int
     //学习率
-    var learningRate: Double
+    var learningRateBase: Double
+    //学习率衰减调度器
+    var learningRateScheduler: LearningRateScheduler
     //损失函数始终持续低于历史最佳时, 最多尝试次数
     var negativeAttempts: Int
     //梯度裁剪阈值
     var gradientThreshold: Double? = nil
-
-    init(batchSize: Int, learningRate: Double, negativeAttempts: Int) {
+    init(batchSize: Int, epochSize: Int, learningRateBase: Double, learningRateScheduler: LearningRateScheduler, negativeAttempts: Int) {
         self.batchSize = batchSize
-        self.learningRate = learningRate
+        self.epochSize = epochSize
+        self.learningRateBase = learningRateBase
+        self.learningRateScheduler = learningRateScheduler
         self.negativeAttempts = negativeAttempts
     }
 }
@@ -109,8 +114,9 @@ class NN {
     //相对偏置矩阵的梯度
     var dB: [[Double]]
     //batch多样本梯度存储
-    var dWeightsBatch: [[[[Double]]]] = []
-    var dBiasesBatch: [[[Double]]] = []
+    var dParametersBatch: [NN.NNParameter] = []
+    //当前学习率
+    var learningRate: Double
     //Batch平均梯度
     var dParametersMean: NN.NNParameter?
     //历史最佳参数
@@ -128,6 +134,7 @@ class NN {
 
     init(networkConfig: NNConfig, trainingConfig: TrainingConfig){
         self.trainingConfig = trainingConfig
+        self.learningRate = trainingConfig.learningRateBase
         self.outputLayer = networkConfig.outputLayer
         self.inputSize = networkConfig.inputSize
         self.outputSize = self.outputLayer.outputSize
@@ -254,9 +261,9 @@ class NN {
         for indexLayer in 0..<parameters.weights.count {
             for indexNode in 0..<parameters.weights[indexLayer].count {
                 for indexToPreviousNode in 0..<parameters.weights[indexLayer][indexNode].count {
-                    self.weights[indexLayer][indexNode][indexToPreviousNode] -= self.trainingConfig.learningRate * parameters.weights[indexLayer][indexNode][indexToPreviousNode]
+                    self.weights[indexLayer][indexNode][indexToPreviousNode] -= self.learningRate * parameters.weights[indexLayer][indexNode][indexToPreviousNode]
                 }
-                self.biases[indexLayer][indexNode] -= self.trainingConfig.learningRate * parameters.biases[indexLayer][indexNode]
+                self.biases[indexLayer][indexNode] -= self.learningRate * parameters.biases[indexLayer][indexNode]
             }
         }
     }
@@ -271,18 +278,18 @@ class NN {
         if inputs.count != self.trainingConfig.batchSize || labels.count != self.trainingConfig.batchSize {
             fatalError("Error: Gradient descent. Input Data doesn't match batch size")
         }
+        let startTime = Date()
         let batchSizeInDouble = Double(self.trainingConfig.batchSize)
-        self.dWeightsBatch = []
-        self.dBiasesBatch = []
+        self.dParametersBatch = []
         for indexBatch in 0..<self.trainingConfig.batchSize {
             print(String(format: "\rTraining... Batch Progress: %.1f%%", (Double(indexBatch+1) / Double(self.trainingConfig.batchSize) * 100.0)), terminator: "")
             fflush(stdout)
             self.fp(input: inputs[indexBatch], labels: labels[indexBatch])
             self.bp()
-            self.dWeightsBatch.append(self.dW)
-            self.dBiasesBatch.append(self.dB)
+            self.dParametersBatch.append(NN.NNParameter(weights: self.dW, biases: self.dB))
             self.resetGradients()
         }
+        //初始化平均梯度结构体
         var dParametersBatchesMean = NNParameter(
             weights: self.dW.map { layer in
                 layer.map { Array(repeating: Double(0.0), count: $0.count) }
@@ -291,20 +298,16 @@ class NN {
                 Array(repeating: Double(0.0), count: layer.count)
             }
         )
-        print("\nUpdating Parameters...")
-        for indexLayer in 0..<self.dW.count {
-            for indexNode in 0..<self.dW[indexLayer].count {
-                dParametersBatchesMean.weights[indexLayer][indexNode] = Array(repeating: Double(0.0), count: self.dW[indexLayer][indexNode].count)
-            }
-            dParametersBatchesMean.biases[indexLayer] = Array(repeating: Double(0.0), count: self.dB[indexLayer].count)
-        }
+        print("\n", terminator: "")
         for indexBatch in 0..<self.trainingConfig.batchSize {
-            for indexLayer in 0..<self.dWeightsBatch[indexBatch].count {
-                for indexNode in 0..<self.dWeightsBatch[indexBatch][indexLayer].count {
-                    for indexWeight in 0..<self.dWeightsBatch[indexBatch][indexLayer][indexNode].count {
-                        dParametersBatchesMean.weights[indexLayer][indexNode][indexWeight] += self.dWeightsBatch[indexBatch][indexLayer][indexNode][indexWeight]
+            print(String(format: "\rUpdating Parameters... Batch Progress: %.1f%%", (Double(indexBatch+1) / Double(self.trainingConfig.batchSize) * 100.0)), terminator: "")
+            fflush(stdout)
+            for indexLayer in 0..<self.dParametersBatch[indexBatch].weights.count {
+                for indexNode in 0..<self.dParametersBatch[indexBatch].weights[indexLayer].count {
+                    for indexWeight in 0..<self.dParametersBatch[indexBatch].weights[indexLayer][indexNode].count {
+                        dParametersBatchesMean.weights[indexLayer][indexNode][indexWeight] += self.dParametersBatch[indexBatch].weights[indexLayer][indexNode][indexWeight]
                     }
-                    dParametersBatchesMean.biases[indexLayer][indexNode] += self.dBiasesBatch[indexBatch][indexLayer][indexNode]
+                    dParametersBatchesMean.biases[indexLayer][indexNode] += self.dParametersBatch[indexBatch].biases[indexLayer][indexNode]
                 }
             }
         }
@@ -316,11 +319,42 @@ class NN {
                 dParametersBatchesMean.biases[indexLayer][indexNode] /= batchSizeInDouble
             }
         }
-        self.updateParameters(withGradients: dParametersBatchesMean)
-        print("Done!")
+        self.updateParameters(withGradients: self.gradientsClip(dParameters: dParametersBatchesMean))
+        print(String(format: "\nSingle batch training complete! Time: %.2f seconds", Date().timeIntervalSince(startTime)))
     }
 
-    //func gradientsClip
+    func descentEpoch(imagesTraining: [(images: [[Double]], labels: [[Double]])], imagesTest: (images: [[Double]], labels: [[Double]])) {
+        if imagesTraining.count != self.trainingConfig.epochSize {
+            fatalError("Error: Gradient descent. Input Data doesn't match epoch size")
+        }
+        let startTime = Date()
+        for indexBatch in 0..<self.trainingConfig.epochSize {
+            print(String(format: "Epoch training... Batch Progress: %.1f%%", (Double(indexBatch+1) / Double(self.trainingConfig.epochSize) * 100.0)))
+            print("Learning Rate: \(self.learningRate)")
+            fflush(stdout)
+            self.learningRate = self.trainingConfig.learningRateScheduler.updateLearningRate(baseLearningRate: self.trainingConfig.learningRateBase, epochIndex: indexBatch+1, epochSize: self.trainingConfig.epochSize)
+            self.descentbatches(inputs: imagesTraining[indexBatch].images, labels: imagesTraining[indexBatch].labels)
+            self.printAccuracy(ImgaesTest: imagesTest.images, LabelsTest: imagesTest.labels)
+        }
+        print(String(format: "\nEpoch training complete! Time: %.2f seconds", Date().timeIntervalSince(startTime)))
+    }
+
+    func gradientsClip(dParameters: NN.NNParameter) -> NN.NNParameter{
+        guard let threshold = self.trainingConfig.gradientThreshold else {
+            print("Attention! No gradient threshold set")
+            return dParameters
+        }
+        let sumSqrtWeights = dParameters.weights.flatMap { $0.flatMap { $0 } }.map { $0 * $0 }.reduce(0.0, +)
+        let sumSqrtBiases = dParameters.biases.flatMap { $0 }.map { $0 * $0 }.reduce(0.0, +)
+        let norm = sqrt(sumSqrtWeights + sumSqrtBiases)
+        guard norm > threshold else {
+            return dParameters
+        }
+        let scale = threshold / norm
+        let weightsClipped = dParameters.weights.map { layer in layer.map { node in node.map { $0 * scale } } }
+        let biasesClipped = dParameters.biases.map { layer in layer.map { $0 * scale } }
+        return NN.NNParameter(weights: weightsClipped, biases: biasesClipped)
+    }
 
     func setGradientThreshold(threshold: Double) {
         self.trainingConfig.gradientThreshold = threshold
@@ -412,9 +446,31 @@ class NN {
         print(String(format: "  Loss: %.4f", self.getLoss()))
     }
 
+    func getAccuracy(ImgaesTest: [[Double]], LabelsTest: [[Double]]) -> (accuracy: Double, loss: Double) {
+        var countCorrect = 0
+        var sumLoss: Double = 0.0
+        for index in 0..<ImgaesTest.count {
+            print("\rTesting... Progress: \(index+1)/\(ImgaesTest.count)", terminator: "")
+            fflush(stdout)
+            self.fp(input: ImgaesTest[index], labels: LabelsTest[index])
+            sumLoss += self.getLoss()
+            if self.getAnswerCheck() {
+                countCorrect += 1
+            }
+            //self.printResultsInDetail()
+        }
+        print("\nTesting Done!")
+        return (Double(countCorrect) / Double(ImgaesTest.count), sumLoss / Double(ImgaesTest.count))
+    }
+
+    func printAccuracy(ImgaesTest: [[Double]], LabelsTest: [[Double]]) {
+        let (accuracy, loss) = self.getAccuracy(ImgaesTest: ImgaesTest, LabelsTest: LabelsTest)
+        print(String(format: "Accuracy: %.2f%%  Loss: %.2f\n", accuracy * 100.0, loss))
+    }
+
     func printParametersInDetail() {
         print("\nParameters:")
-        print(String(format: "  Batch Size: %d    Learning Rate: %.4f", self.trainingConfig.batchSize, self.trainingConfig.learningRate))
+        print(String(format: "  Batch Size: %d    Learning Rate: %.4f", self.trainingConfig.batchSize, self.trainingConfig.learningRateBase))
         print("  Layer Structure: \(self.layerStructure)")
         var dParameters: NN.NNParameter
         if self.dParametersMean != nil {

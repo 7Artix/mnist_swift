@@ -1,5 +1,29 @@
 import Foundation
 
+//MARK: 学习率调度器
+protocol LearningRateScheduler {
+    func updateLearningRate(baseLearningRate: Double, epochIndex: Int, epochSize: Int) -> Double
+}
+//指数衰减
+class ExponentialDecay: LearningRateScheduler {
+    func updateLearningRate(baseLearningRate: Double, epochIndex: Int, epochSize: Int) -> Double {
+        return baseLearningRate * pow(0.05, Double(epochIndex) / Double(epochSize))
+    }
+}
+//余弦退火
+class CosineAnnealing: LearningRateScheduler {
+    func updateLearningRate(baseLearningRate: Double, epochIndex: Int, epochSize: Int) -> Double {
+        return baseLearningRate * 0.5 * (1 + cos(.pi * Double(epochIndex) / Double(epochSize)))
+    }
+}
+//线性衰减
+class LinearDecay: LearningRateScheduler {
+    func updateLearningRate(baseLearningRate: Double, epochIndex: Int, epochSize: Int) -> Double {
+        return baseLearningRate * (1 - Double(epochIndex) / Double(epochSize))
+    }
+}
+
+
 //MARK: 激活函数
 protocol ActivationFunction {
     func forward(_ x: Double) -> Double
