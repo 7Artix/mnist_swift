@@ -26,7 +26,7 @@ class CNN: NN {
             self.fpCNN(input: inputs[indexBatch], labels: labels[indexBatch])
             self.bp()
             self.dParametersBatch.append(NN.NNParameter(weights: self.dW, biases: self.dB))
-            self.resetGradients()
+            super.resetGradients()
         }
         //初始化平均梯度结构体
         var dParametersBatchesMean = NNParameter(
@@ -74,6 +74,7 @@ class CNN: NN {
             self.learningRate = self.trainingConfig.learningRateScheduler.updateLearningRate(baseLearningRate: self.trainingConfig.learningRateBase, epochIndex: indexBatch+1, epochSize: self.trainingConfig.epochSize)
             self.descentbatchesCNN(inputs: imagesTraining[indexBatch].images, labels: imagesTraining[indexBatch].labels)
             self.printAccuracyCNN(ImgaesTest: imagesTest.images, LabelsTest: imagesTest.labels)
+            print(String(format: "Time spent: %.2f seconds\n", Date().timeIntervalSince(startTime)))
         }
         print(String(format: "\nEpoch training complete! Time: %.2f seconds", Date().timeIntervalSince(startTime)))
     }
@@ -97,6 +98,6 @@ class CNN: NN {
 
     func printAccuracyCNN<T: BinaryInteger & FixedWidthInteger>(ImgaesTest: [[[T]]], LabelsTest: [[Double]]) {
         let (accuracy, loss) = self.getAccuracyCNN(ImgaesTest: ImgaesTest, LabelsTest: LabelsTest)
-        print(String(format: "Accuracy: %.2f%%  Loss: %.2f\n", accuracy * 100.0, loss))
+        print(String(format: "Accuracy: %.2f%%  Loss: %.2f", accuracy * 100.0, loss))
     }
 }

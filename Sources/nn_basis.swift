@@ -7,7 +7,7 @@ protocol LearningRateScheduler {
 //指数衰减
 class ExponentialDecay: LearningRateScheduler {
     func updateLearningRate(baseLearningRate: Double, epochIndex: Int, epochSize: Int) -> Double {
-        return baseLearningRate * pow(0.05, Double(epochIndex) / Double(epochSize))
+        return baseLearningRate * pow(0.001, Double(epochIndex) / Double(epochSize))
     }
 }
 //余弦退火
@@ -82,7 +82,9 @@ class CrossEntropy: LossFunction {
         }
         self.predictions = predictions
         self.labels = labels
-        let outputForward = zip(predictions, labels).map { prediction, label in 0.0 - label * log(prediction + 1e-15) }
+        //设定最小值防止log(0)的情况
+        let epsilon = 1e-15
+        let outputForward = zip(predictions, labels).map { prediction, label in 0.0 - label * log(max(prediction, epsilon)) }
         return outputForward.reduce(0.0 , +)
     }
     func backward(indexNode: Int) -> Double {
@@ -112,7 +114,8 @@ class Softmax: NormalizationFunction {
         let expValues = inputAll.map { exp($0 - maxInput) }
         let sumExp = expValues.reduce(0.0, +)
         //记录前向传播输出值
-        self.outputForward = expValues.map { $0 / sumExp }
+        let epsilon = 1e-15
+        self.outputForward = expValues.map { max(($0 / sumExp), epsilon) }
         return self.outputForward![index]
     }
     //softmax求导为全梯度

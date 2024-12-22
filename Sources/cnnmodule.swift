@@ -36,7 +36,7 @@ class CNNModule {
         var imageProcessed: [[Int64]]
         var outputInFlatDouble: [Double] = []
         for layer in layersCNN {
-            print("Using filter: \(layer.filter)")
+            //print("Using filter: \(layer.filter)")
             imageProcessed = convolution(image, with: layer.filter)
             for poolingLayer in layer.poolingLayers {
                 imageProcessed = pooling(imageProcessed, with: poolingLayer.poolingMethod, windowHeight: poolingLayer.poolingHeight, windowWidth: poolingLayer.poolingWidth)
@@ -167,15 +167,15 @@ class CNNModule {
                 outputImageInt64[i-1][j-1] = pixelConvolutionalValue
             }
         }
-        let splitOutputImageRG16 = splitIntoRG16(imageInput: outputImageInt64)
-        let rChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.R))
-        let gChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.G))
-        let bChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.B))
-        do {
-            let imageRecipeRGB161616 = ImageRecipe(width: 28, height: 28, pixelFormat: .RGB161616, provider: try .makeProviderRGB(fromR: rChannel, fromG: gChannel, fromB: bChannel, fromA: nil))
-            let cgImageRGB161616 = try CGImage.createCGImage(imageRecipe: imageRecipeRGB161616)
-            try cgImageRGB161616.saveCGImage(useName: "testConvolution", toPath: "./test", as: .png)
-        }catch{print("Error: \(error)")}
+        // let splitOutputImageRG16 = splitIntoRG16(imageInput: outputImageInt64)
+        // let rChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.R))
+        // let gChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.G))
+        // let bChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.B))
+        // do {
+        //     let imageRecipeRGB161616 = ImageRecipe(width: 28, height: 28, pixelFormat: .RGB161616, provider: try .makeProviderRGB(fromR: rChannel, fromG: gChannel, fromB: bChannel, fromA: nil))
+        //     let cgImageRGB161616 = try CGImage.createCGImage(imageRecipe: imageRecipeRGB161616)
+        //     try cgImageRGB161616.saveCGImage(useName: "testConvolution", toPath: "./test", as: .png)
+        // }catch{print("Error: \(error)")}
         return outputImageInt64
     }
 
@@ -197,15 +197,15 @@ class CNNModule {
                 imageOutput[indexRowOutput][indexColOutput] = poolingAction(poolingValuesTemp, with: method)
             }
         }
-        let splitOutputImageRG16 = splitIntoRG16(imageInput: imageOutput)
-        let rChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.R))
-        let gChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.G))
-        let bChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.B))
-        do {
-            let imageRecipeRGB161616 = ImageRecipe(width: widthOutput, height: heightOutput, pixelFormat: .RGB161616, provider: try .makeProviderRGB(fromR: rChannel, fromG: gChannel, fromB: bChannel, fromA: nil))
-            let cgImageRGB161616 = try CGImage.createCGImage(imageRecipe: imageRecipeRGB161616)
-            try cgImageRGB161616.saveCGImage(useName: "testPooling", toPath: "./test", as: .png)
-        }catch{print("Error: \(error)")}
+        // let splitOutputImageRG16 = splitIntoRG16(imageInput: imageOutput)
+        // let rChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.R))
+        // let gChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.G))
+        // let bChannel: [[UInt16]] = normalization2Dim(changeToUnsigned(splitOutputImageRG16.B))
+        // do {
+        //     let imageRecipeRGB161616 = ImageRecipe(width: widthOutput, height: heightOutput, pixelFormat: .RGB161616, provider: try .makeProviderRGB(fromR: rChannel, fromG: gChannel, fromB: bChannel, fromA: nil))
+        //     let cgImageRGB161616 = try CGImage.createCGImage(imageRecipe: imageRecipeRGB161616)
+        //     try cgImageRGB161616.saveCGImage(useName: "testPooling", toPath: "./test", as: .png)
+        // }catch{print("Error: \(error)")}
         return imageOutput
     }
 

@@ -204,6 +204,13 @@ class NN {
         self.lossLast = self.outputLayer.lossFunction.forward(predictions: self.outputLayer.valueNormalized, labels: labels)
     }
 
+    func testInputLast() {
+        guard let ValuesInput = self.inputLast else {
+            fatalError("Error: BP. Call FP first")
+        }
+        print("Test input last: \(ValuesInput)")
+    }
+
     func bp() {
         guard let ValuesInput = self.inputLast else {
             fatalError("Error: BP. Call FP first")
@@ -243,7 +250,7 @@ class NN {
                 self.dW[0][indexNode][indexWeight] = self.dZ[0][indexNode] * ValuesInput[indexWeight]
             }
         }
-        inputLast = nil
+        self.inputLast = nil
         self.zs = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
         self.activations = self.layerStructure.dropFirst().map { Array(repeating: Double(0.0), count: $0)}
     }
@@ -269,7 +276,6 @@ class NN {
     }
 
     func descentSingleStep() {
-        self.bp()
         let dParameters = NN.NNParameter(weights: self.dW, biases: self.dB)
         updateParameters(withGradients: dParameters)
     }
