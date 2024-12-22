@@ -41,7 +41,6 @@ class CNNModule {
             for poolingLayer in layer.poolingLayers {
                 imageProcessed = pooling(imageProcessed, with: poolingLayer.poolingMethod, windowHeight: poolingLayer.poolingHeight, windowWidth: poolingLayer.poolingWidth)
             }
-            //imageProcessed = pooling(imageProcessed, with: layer.poolingMethod, windowHeight: layer.poolingHeight, windowWidth: layer.poolingWidth)
             outputInFlatDouble.append(contentsOf: flatToDouble(imageProcessed))
         }
         return outputInFlatDouble

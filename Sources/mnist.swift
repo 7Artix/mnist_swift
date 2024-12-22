@@ -68,7 +68,7 @@ class MNIST {
         return (images, labels)
     }
 
-    func getImagesBatchForNetwork(fromIndex index: Int, batchSize: Int) -> (images: [[Double]], labels: [[Double]]) {
+    func getImagesBatchForNN(fromIndex index: Int, batchSize: Int) -> (images: [[Double]], labels: [[Double]]) {
         var imagesInOneDimDouble: [[Double]] = []
         var labelsInOneDimDouble: [[Double]] = []
         for indexBatch in 0..<batchSize {
@@ -82,5 +82,19 @@ class MNIST {
             labelsInOneDimDouble.append(oneHotLabel)
         }
         return (imagesInOneDimDouble, labelsInOneDimDouble)
+    }
+
+    func getImagesBatchForCNN(fromIndex index: Int, batchSize: Int) -> (images: [[[UInt8]]], labels: [[Double]]) {
+        var imagesInTwoDim: [[[UInt8]]] = []
+        var labelsInTwoDim: [[Double]] = []
+        for indexBatch in 0..<batchSize {
+            let image = self.getImage(index: index + indexBatch).0
+            imagesInTwoDim.append(image)
+            let label = self.getImage(index: index + indexBatch).1
+            var oneHotLabel = Array(repeating: Double(0.0), count: 10)
+            oneHotLabel[label] = 1.0
+            labelsInTwoDim.append(oneHotLabel)
+        }
+        return (imagesInTwoDim, labelsInTwoDim)
     }
 }
