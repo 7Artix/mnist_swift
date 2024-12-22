@@ -238,3 +238,37 @@ extension CGDataProvider {
         return provider
     }
 }
+
+func splitIntoRG16<T: BinaryInteger & FixedWidthInteger>(imageInput: [[T]]) -> (R: [[Int16]], G: [[Int16]], B: [[Int16]]) {
+    var R: [[Int16]] = []
+    var G: [[Int16]] = []
+    var B: [[Int16]] = []
+    for row in imageInput {
+        var rowR: [Int16] = []
+        var rowG: [Int16] = []
+        var rowB: [Int16] = []
+        for pixel in row {
+            rowB.append(0)
+            pixel < 0 ? rowR.append(Int16(pixel)) : rowR.append(0)
+            pixel > 0 ? rowG.append(-(Int16(pixel))) : rowG.append(0)
+        }
+        R.append(rowR)
+        G.append(rowG)
+        B.append(rowB)
+    }
+    return (R, G, B)
+}
+
+func flatTo1DimFrom2Dim<T: BinaryInteger & FixedWidthInteger>(_ image: [[T]]) -> [T] {
+    return image.flatMap { row in
+        row.map { $0 }
+    }
+}
+
+func changeToUnsigned<T: BinaryInteger & FixedWidthInteger>(_ image: [[T]]) -> [[T.Magnitude]] {
+    return image.map { row in
+        row.map { pixel in
+            pixel.magnitude
+        }
+    }
+}

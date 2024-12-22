@@ -38,6 +38,26 @@ class MNIST {
         return (image, label)
     }
 
+    func getImageForNetwork(index: Int) -> (image: [Double], labels: [Double]) {
+        let image = self.getImage(index: index).0.flatMap { row in
+            row.map { Double($0) }
+        }
+        let label = self.getImage(index: index).1
+        var oneHotLabel = Array(repeating: Double(0.0), count: 10)
+        oneHotLabel[label] = 1.0
+        return (image, oneHotLabel)
+    }
+
+    func getImageForNetwork2Dim(index: Int) -> (image: [[Double]], labels: [Double]) {
+        let image = self.getImage(index: index).0.map { row in
+            row.map { Double($0) }
+        }
+        let label = self.getImage(index: index).1
+        var oneHotLabel = Array(repeating: Double(0.0), count: 10)
+        oneHotLabel[label] = 1.0
+        return (image, oneHotLabel)
+    }
+
     func getImagesBatch(fromIndex index: Int, batchSize: Int) -> (images: [[[UInt8]]], labelsIndex: [Int]) {
         var images: [[[UInt8]]] = []
         var labels: [Int] = []

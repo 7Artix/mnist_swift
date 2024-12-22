@@ -32,12 +32,12 @@ let filterCross: [[Int]] = [
     [-1, 1, -1]
 ]
 
-//filter: ╳
-let filterX: [[Int]] = [
-    [1, -1, 1],
-    [-1, 4, -1],
-    [1, -1, 1]
-]
+// //filter: ╳
+// let filterX: [[Int]] = [
+//     [1, -1, 1],
+//     [-1, 4, -1],
+//     [1, -1, 1]
+// ]
 
 //filter: ├
 let filterVerticalRight: [[Int]] = [
