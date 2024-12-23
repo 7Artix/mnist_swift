@@ -71,7 +71,7 @@ let labelsMeaning = ["Zero","One","Two","Three","Four","Five","Six","Seven","Eig
 //MARK: CNN Training
 var layersPoolings: [PoolingLayer] = []
 layersPoolings.append(PoolingLayer(poolingMethod: .max, poolingHeight: 2, poolingWidth: 2))
-layersPoolings.append(PoolingLayer(poolingMethod: .average, poolingHeight: 2, poolingWidth: 2))
+layersPoolings.append(PoolingLayer(poolingMethod: .max, poolingHeight: 2, poolingWidth: 2))
 
 var layersCNN: [CNNLayer] = []
 
@@ -92,7 +92,7 @@ layersCNN.append(CNNLayer(filter: filterAngle, poolingLayers: layersPoolings))
 let imageSample: [[UInt8]] = mnistTraining.getImage(index: 18).image
 let moduleCNN = CNNModule(imageSample: imageSample, layersCNN: layersCNN)
 
-//MARK: 测试保存照片
+//MARK: 测试保存卷积池化照片
 // for (i, layer) in moduleCNN.layersCNN.enumerated() {
 //     print("Layer:")
 //     let imageCon = moduleCNN.convolution(imageTestSave, with: layer.filter)
@@ -120,20 +120,21 @@ let moduleCNN = CNNModule(imageSample: imageSample, layersCNN: layersCNN)
 //     }catch{print("Error: \(error)")}
 // }
 
-let epochSize = 1000
+let epochSize = 1200
 var networkStructureCNN: [[NodeStructure]] = []
-networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 480))
-networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 240))
-networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 120))
+networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 256))
+networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 128))
 networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 10))
 let outputlayerCNN = OutputLayer(outputSize: 10, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
-let networkConfigCNN = NNConfig(inputSize: 784, structure: networkStructureCNN, outputLayer: outputlayerCNN)
-let trainingConfigCNN = TrainingConfig(batchSize: batchSize, epochSize: epochSize, learningRateBase: 0.05, learningRateScheduler: ExponentialDecay(), negativeAttempts: 5)
+let networkConfigCNN = NNConfig(inputSize: 1, structure: networkStructureCNN, outputLayer: outputlayerCNN)
+let trainingConfigCNN = TrainingConfig(batchSize: batchSize, epochSize: epochSize, learningRateBase: 0.001, learningRateScheduler: ExponentialDecay(), negativeAttempts: 5)
 let networkCNN = CNN(networkConfig: networkConfigCNN, trainingConfig: trainingConfigCNN, moduleCNN: moduleCNN)
 networkCNN.setLabelsMeaning(use: labelsMeaning)
-networkCNN.setGradientThreshold(threshold: 2.0)
-let testImagesCNN = mnistTest.getImagesBatchForCNN(fromIndex: 0, batchSize: 50)
+networkCNN.setGradientThreshold(threshold: 5.0)
+print("\nLayers: \(networkCNN.layerStructure)")
+let testImagesCNN = mnistTest.getImagesBatchForCNN(fromIndex: 0, batchSize: 5)
 let testImagesCNNAll = mnistTest.getImagesBatchForCNN(fromIndex: 0, batchSize: 10000)
+let testImagesCNNFromTraining = mnistTraining.getImagesBatchForCNN(fromIndex: 0, batchSize: 10000)
 var trainingImagesCNN: [(images: [[[UInt8]]], labels: [[Double]])] = []
 for i in 0..<epochSize {
     print(String(format: "\rPreparing training data: %.1f%%", Double(i+1) * 100.0 / Double(epochSize)), terminator: "")
@@ -142,7 +143,8 @@ for i in 0..<epochSize {
 }
 print("\n")
 
-print(networkCNN.layerStructure)
-
 networkCNN.descentEpochCNN(imagesTraining: trainingImagesCNN, imagesTest: testImagesCNN)
+print("Test Samples Accuracy:")
 networkCNN.printAccuracyCNN(ImgaesTest: testImagesCNNAll.images, LabelsTest: testImagesCNNAll.labels)
+print("Training Samples Accuracy:")
+networkCNN.printAccuracyCNN(ImgaesTest: testImagesCNNFromTraining.images, LabelsTest: testImagesCNNFromTraining.labels)

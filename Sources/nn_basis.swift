@@ -7,7 +7,7 @@ protocol LearningRateScheduler {
 //指数衰减
 class ExponentialDecay: LearningRateScheduler {
     func updateLearningRate(baseLearningRate: Double, epochIndex: Int, epochSize: Int) -> Double {
-        return baseLearningRate * pow(0.001, Double(epochIndex) / Double(epochSize))
+        return baseLearningRate * pow(0.01, Double(epochIndex) / Double(epochSize))
     }
 }
 //余弦退火
