@@ -71,7 +71,7 @@ let labelsMeaning = ["Zero","One","Two","Three","Four","Five","Six","Seven","Eig
 //MARK: CNN Training
 var layersPoolings: [PoolingLayer] = []
 layersPoolings.append(PoolingLayer(poolingMethod: .max, poolingHeight: 2, poolingWidth: 2))
-layersPoolings.append(PoolingLayer(poolingMethod: .max, poolingHeight: 2, poolingWidth: 2))
+layersPoolings.append(PoolingLayer(poolingMethod: .average, poolingHeight: 2, poolingWidth: 2))
 
 var layersCNN: [CNNLayer] = []
 
@@ -122,15 +122,17 @@ let moduleCNN = CNNModule(imageSample: imageSample, layersCNN: layersCNN)
 
 let epochSize = 1200
 var networkStructureCNN: [[NodeStructure]] = []
-networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 256))
-networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 128))
+networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 500))
+networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 250))
+networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 100))
+networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 50))
 networkStructureCNN.append(Array(repeating: NodeStructure(activationFunction: ReLU(), weightInitializer: heInitializer(inputSize:_:), bias: 0.01), count: 10))
 let outputlayerCNN = OutputLayer(outputSize: 10, normalizationFunction: Softmax(), lossFunction: CrossEntropy())
 let networkConfigCNN = NNConfig(inputSize: 1, structure: networkStructureCNN, outputLayer: outputlayerCNN)
-let trainingConfigCNN = TrainingConfig(batchSize: batchSize, epochSize: epochSize, learningRateBase: 0.001, learningRateScheduler: ExponentialDecay(), negativeAttempts: 5)
+let trainingConfigCNN = TrainingConfig(batchSize: batchSize, epochSize: epochSize, learningRateBase: 0.1, learningRateScheduler: ExponentialDecay(), negativeAttempts: 5)
 let networkCNN = CNN(networkConfig: networkConfigCNN, trainingConfig: trainingConfigCNN, moduleCNN: moduleCNN)
 networkCNN.setLabelsMeaning(use: labelsMeaning)
-networkCNN.setGradientThreshold(threshold: 5.0)
+networkCNN.setGradientThreshold(threshold: 2.0)
 print("\nLayers: \(networkCNN.layerStructure)")
 let testImagesCNN = mnistTest.getImagesBatchForCNN(fromIndex: 0, batchSize: 5)
 let testImagesCNNAll = mnistTest.getImagesBatchForCNN(fromIndex: 0, batchSize: 10000)
@@ -146,5 +148,3 @@ print("\n")
 networkCNN.descentEpochCNN(imagesTraining: trainingImagesCNN, imagesTest: testImagesCNN)
 print("Test Samples Accuracy:")
 networkCNN.printAccuracyCNN(ImgaesTest: testImagesCNNAll.images, LabelsTest: testImagesCNNAll.labels)
-print("Training Samples Accuracy:")
-networkCNN.printAccuracyCNN(ImgaesTest: testImagesCNNFromTraining.images, LabelsTest: testImagesCNNFromTraining.labels)
